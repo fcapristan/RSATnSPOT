@@ -1,0 +1,2 @@
+gfortran -c ode.f90
+f2py --fcompiler=gfortran -m orbitPropSPOT -c moduleConstants.f90 modulePlanetEarth.f90 denEstimator.f90 linearInterpolation.f90 speedOfSound.f90 ode.o trajProp.f90

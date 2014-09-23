@@ -1,0 +1,26 @@
+STANFORD PROGRAM TO OPTIMIZA TRAJECTORIES (SPOT)
+THIS FOLDER CONTAINS ALL FILES REQUIRED TO RUN THE TRAJECTORY OPTIMIZATION CODE. 
+SPOT requires:
+- pySNOPT or CYIPOPT optimization wrappers.
+- Python
+- Numpy and Scipy
+- fortran compilers
+
+Tested with python 2.7
+
+
+To install the f2py dependencies type:
+source sourceMe
+
+
+For Sample Case type:
+cd SampleCase
+python runTrajetory.py
+
+NOTE: THIS IS A RESEARCH CODE DEVELOPED TO GENERATE SOME SAMPLE TRAJECTORIES. THIS CODE IS CONSTANT DEVELOPMENT IN THE AEROSPACE DESIGN LAB AT STANFORD. OTHER FREELY AVAILABLE OPTIONS INCLUDE GPOPS FROM UNIVERSITY OF FLORIDA. DO NO DISTRIBUTE ANY FURTHER.
+
+
+Let me know if you have any questions
+
+Francisco Capristan
+fcaprist@stanford.edu 

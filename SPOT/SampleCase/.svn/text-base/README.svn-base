@@ -1,0 +1,15 @@
+SAMPLE SPOT CASE
+to run type:
+
+python runTrajectory.py input_STOP.dat
+
+SPOT allows to generate optimal trajectories with a given launch window. It writes the results to different text files e.g Traj1.txt.
+A python dictionary of the entire trajectory can be loaded using cPickle with 'solList.txt'
+The different parameters in the dictionary are defined in 'dictionaryDefinitions.py'
+ 
+
+runTrajectory.py couples the different routines to run SPOT. It starts with optimizing with a lower number of points, it then adds points until the desired number is obtained.
+Check optWanings.txt for convergence issues.
+
+
+questions to fcaprist@stanford.edu

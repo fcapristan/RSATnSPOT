@@ -1,0 +1,86 @@
+#****************************************************************************************
+# File: input_STOP.dat
+#
+# SAMPLE INPUT FILE
+# 
+# Created by:          Francisco C.
+# $Rev: 60 $ 
+# $LastChangedDate: 2012-07-06 15:34:41 -0700 (Fri, 06 Jul 2012) $ 
+# $LastChangedBy: fcapristan $     
+#		
+#****************************************************************************************
+
+
+
+
+
+
+#-------------------------------------------------------------------------------
+#     Planet Information
+#-------------------------------------------------------------------------------
+                    Planet name: EARTH # must be all CAPITAL LETTERS
+
+#-------------------------------------------------------------------------------
+#    Vehicle Information
+#-------------------------------------------------------------------------------
+			Vehicle name: Vehicle1
+		     Vehicle stages : 2. # this parameter must be specified before any other vehicle parameter (except Vehicle name)
+	     #Vehicle propellant mass: 217089.31 44361.33 #[kg] length of this depends on the number of stages
+	     Vehicle propellant mass: 321203.0 45760.0 #[kg] length of this depends on the number of stages
+             Vehicle structural mass: 17454.234 4626.64# [kg] length of this depends on the number of stages
+	     	Vehicle payload mass: 3500.0 #[kg]
+             	         Vehicle isp: 279.5 342. # [s] length of this depends on the number of stages
+                  Vehicle max thrust: 5004000. 445000. # [N] per enginelength of this depends on the number of stages 
+		 Vehicle num engines: 1. 1. # integer value, number of engines
+		Vehicle min throttle: 1.0 .2 #Min throttle- fraction of max thrust
+	   	   	  Vehicle Cd: CDelHalconALL.dat CDelHalcon2ndStage.dat
+			  # 
+		      # Vehicle coastSetup: [1 2 2]
+		      # Vehicle optCoast : [opt coast opt] # using Vehicle coastSetup (1 stage optimize, 2nd stage coast, 2nd stage optimize]
+#-------------------------------------------------------------------------------
+#   Boundary Constraints/Desired Orbital Parameters
+#-------------------------------------------------------------------------------
+#           constraints at launch
+
+               latitude initial: 28.561966667 #[-90 to 90 degrees] 
+              longitude initial: -80.5772 #[-180 to 180degrees] 
+              elevation initial: 76.2 #[m] above sea level
+             Launch Orientation: vertical #orientation with respect to the surface (vertical or horizontal) !!!CURRENTLY NO EFFECT
+#           constraints at arrival
+                       hp final: 349000. # [m] altitude of periapsis, rp = hp + Rplanet (to calculate radius at periapsis)
+	                e final: 0.002816 # eccentricity
+	              inc final: 51.6 # [deg] inclination
+	           komega final: 109.99 # [deg]Longitude of the ascending node
+	            omega final: 343.2854 # [deg] argument of periapsis
+	               nu final: 10 # [deg] true anomaly...currently has no effect
+
+
+#-------------------------------------------------------------------------------
+#    Launch Site Time Information
+#-------------------------------------------------------------------------------
+# this now WORKS
+			Launch time : 16 32 #  [hours] [mins]
+			Launch UT   : 5 # UT value to add to launch time
+		     	Launch date : 06/05/2002 # month/day/year
+	     	     #straight height: 7000.0 #[m] height for trajectory to go thrust straight up in ECEF frame...0 if not specified
+		     straight time  : 50.0 #[sec] time to go straight up...0 if not specified
+		     ## Either 'straight time' or 'straight height' can be specified. Error if both are specified 
+
+#-------------------------------------------------------------------------------
+#     Discretization and Optimizer Information
+#-------------------------------------------------------------------------------
+                       N points  : 26 20 # number of control per stage, must be an integer
+		       Optimizer : Snopt # options "Ipopt" or "Snopt"->Ipopt for open source
+                      
+
+#---------------------------------------------------------------------------------
+#	Launch window range for multiple trajectory generation
+#--------------------------------------------------------------------------------
+			deltaTlaunch : 15.0 # in minutes...window will be Launch time +/- deltaTlaunch
+			nTrajectories : 15 # must be positive integer
+
+#-------------------------------------------------------------------------------
+# Other Options
+#-------------------------------------------------------------------------------
+# this section for other options 
+       	       	       Propagate Stage : 1 2 # this propagates the desired stage from the last known state vector (mass constant)

@@ -1,0 +1,14 @@
+Stanford Program to Optimize Trajectories (SPOT)
+
+This is a simple code to obtain sample trajectories for research purposes.
+
+Some assumptions:
+-Lift not added in this version (no angle of attack).
+-CD as a function of Mach Number only.
+-Spherical Rotating Earth.
+-Uses Pseudospectral Collocation Method.
+
+
+questions?
+
+fcaprist@stanford.edu
