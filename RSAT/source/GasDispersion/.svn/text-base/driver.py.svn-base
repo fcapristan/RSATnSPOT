@@ -1,0 +1,10 @@
+import latlonUTM as trial
+
+
+datum = 'WGS72'
+
+ne,nn,utmd = trial.changeUTMcoord(23,60.0745,-44.9858,datum)
+print ne,nn,utmd
+
+
+

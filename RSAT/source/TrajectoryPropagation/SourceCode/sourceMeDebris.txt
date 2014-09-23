@@ -1,0 +1,2 @@
+f2py --fcompiler=intelem -m debrisPropagation -c moduleConstants.f90 modulePlanetEarth.f90 denEstimator.f90 linearInterpolation.f90 speedOfSound.f90 ode.o debrisProp.f90
+#f2py --fcompiler=intelem -m debrisPropagationAllTime -c moduleConstants.f90 modulePlanetEarth.f90 denEstimator.f90 linearInterpolation.f90 speedOfSound.f90 ode.o debrisPropAllTime.f90

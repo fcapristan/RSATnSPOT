@@ -1,0 +1,163 @@
+#routine to calculate partial derivatives 
+
+
+
+# basic imports 
+import sys
+
+import numpy as np
+# safety assessment tool path
+#mainPATH = '../../../source/'
+### importing safety assessment tool
+# path and import for debris propagation path
+
+### importing safety metrics and population reader
+import simpleArcReader as SAR
+import safetyMetrics as SF
+
+import debrisPropagation as dp # debris propagation only tracks values at impact with planet
+
+    
+def EcderivsFiniteDiff(vals,params,options,step):
+    import copy
+    #calculating referece value
+    
+    valsRef = copy.deepcopy(vals)
+    valsRef[11] = 0.0
+    valsRef[12] = 0.0
+    valsRef[13] = 0.0
+ 
+    ec0 = runEc(valsRef,params,options)
+  
+    dec_dx = np.zeros((len(vals),1))
+    for index in range(len(vals)):
+        diffVals = copy.deepcopy(vals)
+        #if (isinstance(diffVals[index], (int, long, float, complex))==False):
+            #diffVals[index] = np.array(diffVals[index])
+        diffVals[index] = diffVals[index] + step
+
+        ecvals = runEc(diffVals,params,options)
+        dec_dx[index,0] = (ecvals-ec0)/step
+    return dec_dx,ec0
+
+def EcderivsFiniteDiffNormVars(normvars,params,options,step,lowerbound,upperbound):
+    import copy
+    #calculating referece value
+    
+    vals = normVars2Vars(normvars,lowerbound,upperbound)
+   
+    valsRef = copy.deepcopy(vals)
+    valsRef[11] = 0.0
+    valsRef[12] = 0.0
+    valsRef[13] = 0.0
+
+    
+    ec0 = runEc(valsRef,params,options)
+    
+    dec_dxnorm = np.zeros((len(vals),1))
+    for index in range(len(vals)):
+        diffValsNorm = copy.deepcopy(normvars)
+        #if (isinstance(diffVals[index], (int, long, float, complex))==False):
+        #diffVals[index] = np.array(diffVals[index])
+        diffValsNorm[index] = diffValsNorm[index] + step
+        
+        diffVals = normVars2Vars(diffValsNorm,lowerbound,upperbound)
+        ecvals = runEc(diffVals,params,options)
+        
+        dec_dxnorm[index,0] = (ecvals-ec0)/step
+    
+    print dec_dxnorm
+    return dec_dxnorm,ec0
+
+
+    
+
+def runEc(diffVals,params,option):
+    initialstate = diffVals[0:6]
+    debrisvel = diffVals[6:9]
+    massval = diffVals[9]
+    sref = diffVals[10]
+    cdoff = diffVals[11]
+    cloff = diffVals[12]
+    loverdoff = diffVals[13]
+    
+    cloption = option[0]
+    atmosoption = option[1]
+    geoptions = option[2]
+    filename = option[3]
+    planetmodel = option[4]
+    dtinterval = option[5]
+    
+    
+    
+    
+    minfcd = params[0]
+    cd = np.array(params[1]) + cdoff
+    minfcl = params[2]
+    cl = np.array(params[3]) + cloff
+    loverd = np.array(params[4]) + loverdoff
+    altitudelist = params[5]
+    densitylist = params[6]
+    ulist = params[7]
+    vlist = params[8]
+    wlist = params[9]
+    thetag0 = params[10]
+
+    keyPop = params[11]
+    keyArea = params[12]
+    xllcorner = params[13]
+    yllcorner = params[14]
+    cellsize = params[15]
+    xMax = params[16]
+    yMax = params[17]
+    ignorebounds = 1
+    casualtyArea = params[18]
+    
+    debrisResults= dp.debrispropagation(initialstate,debrisvel,massval,sref,minfcd,cd,cloption,
+                                        minfcl,cl,loverd,atmosoption,altitudelist,
+                                        densitylist,ulist,vlist,wlist,geoptions,filename,planetmodel,dtinterval,thetag0)
+    
+    altitudeFinal = debrisResults[0]
+    latitudeFinal = debrisResults[1]
+    longitudeFinal = debrisResults[2]
+    Vfinal = debrisResults[3] # final velocity magnitude relative to Earth
+    
+    
+    rp = .3048
+    xylocations = [longitudeFinal,latitudeFinal]
+    
+    if altitudeFinal<=0.0:
+        #for people in the open
+        ecvals = SF.calculateecsinglepiece(keyPop,keyArea,xllcorner,yllcorner,cellsize,xMax,yMax,xylocations,ignorebounds,rp,casualtyArea)
+    else:
+        ecvals = 0.0
+    return ecvals
+
+
+def normalizeVars(vars,lowerbound=None,upperbound=None):
+    # function that normalizes input variables to be within [-1,1]
+    dim,varjN = np.shape(vars)
+
+    if (lowerbound==None)and(upperbound==None):
+        upperbound = np.max(vars,axis=1)
+        lowerbound = np.min(vars,axis=1)
+    elif (lowerbound==None)or(upperbound==None):
+        print 'Only upper or lower bound were specified. Both or none needed'
+        print 'Error in normVars in derivs.py'
+        error()
+        
+
+    upperbound = np.reshape(upperbound,(dim,1))
+    lowerbound = np.reshape(lowerbound,(dim,1))
+    
+    deltaBound = upperbound - lowerbound
+    deltaBound[deltaBound==0.] = 1e-15 # to avoid divide by zero error...has no effect on calculation if this is the case
+    newVars = 2.0*((vars-lowerbound)/deltaBound) -1.0
+    return newVars,lowerbound,upperbound
+        
+def normVars2Vars(normvars,lowerbound,upperbound):
+    lowerbound = np.reshape(lowerbound,(len(normvars)))
+    upperbound = np.reshape(upperbound,(len(normvars)))
+    deltaBound = upperbound - lowerbound
+    vals = lowerbound + 0.5*deltaBound*(normvars+ 1.0)
+    return vals

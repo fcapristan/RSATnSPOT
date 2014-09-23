@@ -1,0 +1,2 @@
+f2py --fcompiler=gfortran -m meancov -c meanCov2D.f90
+f2py --fcompiler=gfortran -m lonlatChecks -c lonlatChecks.f90

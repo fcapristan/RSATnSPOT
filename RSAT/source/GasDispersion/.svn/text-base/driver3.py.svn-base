@@ -1,0 +1,81 @@
+import numpy as np
+import aermodPost as aer
+import latlonUTM as coord
+import matplotlib.pyplot as plt
+from mpl_toolkits.basemap import Basemap
+
+
+x,y,conc=aer.reader('./AERMODTOOLS/aermod/MAX1.OUT')
+lat = []
+lon = []
+
+
+
+latS, lonS = coord.utm2latlon(17,536900,3142600,'N','Clarke1866')
+
+print lonS,latS
+
+for index in range(0,len(x)):
+    latitude, longitude = coord.utm2latlon(17,x[index],y[index],'N','Clarke1866')
+  #  lat.append(y[index])
+   # lon.append(x[index])
+    lat.append(latitude)
+    
+    lon.append(longitude)
+
+latmin = np.min(lat)
+latmax = np.max(lat)
+
+lonmin = np.min(lon)
+lonmax = np.max(lon)
+
+#yarr = np.linspace(latmin-.001,latmax+.001,100)
+#xarr = np.linspace(lonmin-.001,lonmax+.001,100)
+
+yarr = np.arange(latmin-.01,latmax+.01,.00017)
+xarr = np.arange(lonmin-.01,lonmax+.01,.00017)
+
+dy = yarr[1]-yarr[0]
+dx = xarr[1]-xarr[0]
+
+X,Y = np.meshgrid(xarr,yarr)
+Z = 0*X
+
+for index in range(0,len(lat)):
+    indexX = np.floor((lon[index]-xarr[0])/dx)
+    indexY = np.floor((lat[index]-yarr[0])/dy)
+    Z[indexY,indexX] = conc[index]+Z[indexY,indexX]
+
+    
+#Z = np.log(Z)
+
+
+plt.figure(1)
+plt.plot(lon,lat)
+
+plt.figure(2)
+
+#plt.plot(lonS,latS,'x')
+
+
+im = plt.imread('cape.png')
+corners = [536730,548970,3138630,3152490]
+implot = plt.imshow(im,extent=corners)
+
+
+'''
+map = Basemap(projection='cyl',llcrnrlon=-180,urcrnrlon=10,\
+                      llcrnrlat=0,urcrnrlat=90,resolution='l')
+map.bluemarble()
+#map.drawcoastlines()
+#map.fillcontinents(color='coral',lake_color='aqua')
+# draw parallels and meridians.
+map.drawparallels(np.arange(0.,45.,1))
+map.drawmeridians(np.arange(-180.,0.,1))
+map.drawmapboundary(fill_color='aqua')
+'''
+
+plt.contour(X,Y,Z,60)
+
+
+plt.show()
