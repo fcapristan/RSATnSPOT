@@ -267,7 +267,7 @@ def getWeightedPDFfromSetup(lonlatPframe,xMeshP,yMeshP,weightArray):
         exit() 
   
     ZZpdfPframe = SK.serialWeightKDE(nSamples,lonlatPframe,row,col,xMeshP,yMeshP,weightArray)
-    print xMeshP
+  
     return ZZpdfPframe
 
 
@@ -393,10 +393,11 @@ def calculateEcMatrixShelteringWeighted(lonlat,populationClass,weightArray,
             matout = SMF.checkpolygon(lonOrMesh,latOrMesh,xpol,ypol)
             desval = 0.0
             popMatrix = SMF.updatematpolygon(lonOrMesh,latOrMesh,xpol,ypol,popMatrix,desval)
+        km2_to_m_2 = (1000.0)**2.0   
         massave = massSum/nSamples
         NpiecesAve = massTotal/massave
-        Ec = np.sum(weightArray)/nSamples *popMatrix[0][0]*NpiecesAve
-        #print 'Check',NpiecesAve,popMatrix,popMatrix[0][0],lonOrMesh,latOrMesh
+        Ec = np.sum(weightArray)/nSamples *(popMatrix[0][0]/km2_to_m_2)*NpiecesAve
+        #print 'Check',NpiecesAve,popMatrix,np.sum(weightArray)/nSamples
         return Ec,[],[],[]
         
     
@@ -525,7 +526,7 @@ def calculateWeightedKDE(lonlat,nSamplesModeled,delta,weightArray,massSum,massTo
         weightArray = nweightArray[index]
         nSamplesloc = len(weightArray)
         nSamplesTotal = nSamplesloc + nSamplesTotal
-        print 'nSamples in minigroup',nSamplesloc
+        #print 'nSamples in minigroup',nSamplesloc
         if nSamplesloc<=10:
             print 'Error: Adjust debris catalog. Current samples for this subgroup (rearranged by ballistic coeff) <10 samples '
             print 'Try subdiviging this debris group or add more samples'
@@ -809,6 +810,5 @@ def groupBallisticCoeff(ArefList=None,massList=None,lonlat=None,weight=None,CDre
         lonlatOut.append(lonlat[location,:])
         weightOut.append(weight[location])
     return arefOut,massOut,lonlatOut,weightOut
-
 
 
