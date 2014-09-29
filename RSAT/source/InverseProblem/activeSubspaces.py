@@ -1,6 +1,6 @@
 #routines to calculate active subspaces
 
-import derivs
+#import derivs
 import numpy as np
 import time
 import os
@@ -103,7 +103,7 @@ def uniformVals(a,b):
     assert(b>a)
     mu = .5*(b+a)
     var = (1.0/12.0)*(b-a)**2.0
-    sigma = (b-a)/(2.0*np.sqrt(3))
+    sigma = (b-a)/(2.0*np.sqrt(3.))
     
     return mu,var,sigma
 

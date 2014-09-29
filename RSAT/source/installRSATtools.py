@@ -19,7 +19,7 @@ STATSPATH = mainPath+'/STATS/kernelQuadCpp/'
 os.chdir(STATSPATH)
 
 os.system('python setup.py install --install-lib=../')
-'''
+
 print 'INSTALLING STATS F2PY ROUTINE'
 
 os.chdir(mainPath+'/STATS')
@@ -50,4 +50,4 @@ os.system('mv orbitProp.so ../orbitProp.so')
 os.system('mv debrisPropagation.so ../debrisPropagation.so')
 os.system('mv debrisPropagationAllTime.so ../debrisPropagationAllTime.so')
 os.system('mv malFunc.so ../malFunc.so')
-'''
+
