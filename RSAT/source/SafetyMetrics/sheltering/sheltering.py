@@ -170,7 +170,9 @@ class shelter:
     def update(self,percentInOpen):
         if percentInOpen > 1.0:
             print 'Invalid input for shelter.update, value must be less than 1'
-            exit()
+            print 'Percent in Open',percentInOpen
+            print 'Adjusting to upper bound of 1' 
+            percentInOpen = 1.0
 
         sumVals = np.sum(self.vals) - self.vals[4,0] # sum of percentages except for people in the open
         weight = (1.0 - percentInOpen)/sumVals
