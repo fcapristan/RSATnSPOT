@@ -204,8 +204,9 @@ class samples:
             activeSubspaceVar[index,:] = 2.0*(values[index,:]-lowLim[index])/delta[index]-1.
         
         if activeSubspaceVar.max()>1.0 or activeSubspaceVar.min()<-1.0:
-            print 'Error: New Sample Value exceeds limits [-1,1]' 
-            exit()
+            print 'Warning: New Sample Value exceeds limits [-1,1]' 
+            print 'This might be OK if finite difference being used on the bounds'
+            print 'Current values should be [-1,1] but are  ',activeSubspaceVar.max(),activeSubspaceVar.min()
         XS = np.dot((activeSubspaceClass.U).T,activeSubspaceVar)
         self.activeSubspaceVals = XS
     def updateOutputs(self,fun=None,multiPro=1):
