@@ -242,7 +242,7 @@ class activeSubspace:
         self.eigenvecs = []
         self.Nsubspace = []
         self.outputs = []
-    def getSubspace(self,fun=None,funPrime=None,distributionClass=None,nSamples=None,nsubspace=None,step=None,controlIndex=None,multiPro=1):
+    def getSubspace(self,fun=None,funPrime=None,distributionClass=None,nSamples=None,nsubspace=None,step=None,controlIndex=None,multiPro=1,threshold=.95):
         ndim = len(distributionClass.name)
         self.base = np.random.uniform(size=[ndim,nSamples])
         self.values = np.zeros((ndim,nSamples))
@@ -300,20 +300,37 @@ class activeSubspace:
         self.eigenvals = eigenvals
         
         if nsubspace==None: #let the code pick the number of eigenvalues
-            self.selectSubspaces()
+            self.selectSubspaces(threshold=threshold)
         else:
             self.Nsubspace = nsubspace
         self.eigenvecs = eigenvecs
         self.U = eigenvecs[:,0:self.Nsubspace]
         self.subspaceBase = np.dot((self.U).T,self.base)
         self.importantVariables(distributionClass)
+
+    def updateSubspace(self,nsubspace=None,threshold=None,distributionClass=None):
+        if nsubspace==None:
+            if treshold==None:
+                print 'Error in updateSubspace. No specified nsubspace or threshold'
+                exit()
+            self.selectSubspaces(threshold=threshold)
+        else :
+            if threshold!=None:
+                print 'Error in updateSubspace. Cannot specify both nsubspace and threshold'
+                exit()
+            self.Nsubspace = nsubspace
+
+        self.U = self.eigenvecs[:,0:self.Nsubspace]
+        self.subspaceBase = np.dot((self.U).T,self.base)
+        if distributionClass!=None:
+            self.importantVariables(distributionClass)
     
-    def selectSubspaces(self):
+    def selectSubspaces(self,threshold=None):
         eigenvals = self.eigenvals
         #eigrnvalues must be in decreasing order
         totalSum = np.sum(eigenvals)
         currSum = 0.0
-        threshold = 0.95
+        
         for index in range(len(eigenvals)):
             currSum = currSum + eigenvals[index]
             #print 'temp',currSum/totalSum,index

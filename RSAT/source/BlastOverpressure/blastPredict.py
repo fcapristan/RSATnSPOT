@@ -248,7 +248,7 @@ class yieldLiquid:
             print 'Liquid Propellant name does not match'
             print 'Error in blastPredic.py'
             exit()
-        self.fun = scipy.interpolate.interp1d(ft_to_m*np.array(x),np.array(y),kind='linear',fill_value=y[-1])
+        self.fun = scipy.interpolate.interp1d(ft_to_m*np.array(x),np.array(y),kind='linear',bounds_error=False,fill_value=y[-1])
 
     def yieldFactor(self,vel):
         if vel <0:
