@@ -28,12 +28,14 @@ def getJacobian(fun,X,step):
     n = len(X)
     J = np.zeros((n,1))
     #print 'Xor',X
+    print 'Computing J'
     for index in range(n):
         Xnew = copy.copy(X)
         Xnew[index] = X[index] + step[index]
         fp1 = fun(Xnew)
         J[index,0] = (fp1-f0)/step[index]
-    
+    print J
+    exit()
     
     return J,f0
 
@@ -218,7 +220,7 @@ class samples:
                 outputs[index] = fun(X)
         else:
             import pathos.multiprocessing as mp
-            
+            threshold
             valsMulti = ((self.values).T).tolist()
             p = mp.Pool(multiPro)
             outputs = p.map(fun,valsMulti)
@@ -244,6 +246,7 @@ class activeSubspace:
         self.outputs = []
     def getSubspace(self,fun=None,funPrime=None,distributionClass=None,nSamples=None,nsubspace=None,step=None,controlIndex=None,multiPro=1,threshold=.95):
         ndim = len(distributionClass.name)
+        self.ndim = ndim
         self.base = np.random.uniform(size=[ndim,nSamples])
         self.values = np.zeros((ndim,nSamples))
         self.controlIndex = controlIndex
@@ -257,14 +260,16 @@ class activeSubspace:
         
         #vars is a list of input vectors
         if step==None:
-            step = 0.1*np.ones((ndim))
+            step = 0.01*np.ones((ndim))
         self.step = step
         #nondim  and rescaled desired values new vars within [-1,1]
         
         A = np.diag(.5*deltaVec)
+        self.AJA = A #storing A matrix to be used in computations outside this routine (giving the user more control)
         #calculating Jacobian
         sumJ = 0.0
         self.outputs = np.zeros((nSamples))-999999.
+        self.J = np.zeros((ndim,nSamples))
         if funPrime==None:
             funPrime = lambda X:getJacobian(fun,X,step)
         
@@ -273,6 +278,7 @@ class activeSubspace:
             for index in range(nSamples):
                 
                 J,funcOut = funPrime(self.values[:,index])
+                self.J[:,index] = J[:,0]
                 self.outputs[index] = funcOut
                 sumJ = np.dot(J,J.T) + sumJ
         else:
@@ -285,7 +291,7 @@ class activeSubspace:
                 funcOut = resMulti[index][1]
                 self.outputs[index] = funcOut
                 sumJ = np.dot(Jlocal,Jlocal.T) + sumJ
-        
+                self.J[:,index] = Jlocal[:,0]
         
         
         sumJ = np.dot(A,sumJ)#could change this to make matrix calc faster (elem*row) 
@@ -306,11 +312,11 @@ class activeSubspace:
         self.eigenvecs = eigenvecs
         self.U = eigenvecs[:,0:self.Nsubspace]
         self.subspaceBase = np.dot((self.U).T,self.base)
-        self.importantVariables(distributionClass)
+        self.importantVariables()
 
-    def updateSubspace(self,nsubspace=None,threshold=None,distributionClass=None):
+    def updateSubspace(self,nsubspace=None,threshold=None):
         if nsubspace==None:
-            if treshold==None:
+            if threshold==None:
                 print 'Error in updateSubspace. No specified nsubspace or threshold'
                 exit()
             self.selectSubspaces(threshold=threshold)
@@ -322,8 +328,7 @@ class activeSubspace:
 
         self.U = self.eigenvecs[:,0:self.Nsubspace]
         self.subspaceBase = np.dot((self.U).T,self.base)
-        if distributionClass!=None:
-            self.importantVariables(distributionClass)
+        self.importantVariables()
     
     def selectSubspaces(self,threshold=None):
         eigenvals = self.eigenvals
@@ -341,10 +346,12 @@ class activeSubspace:
         self.Nsubspace = index + 1
     
     
-    def importantVariables(self,distributionClass):#Any other method such as 
+    def importantVariables(self):#Any other method such as 
         n = self.Nsubspace
         eigenvals = self.eigenvals[0:n]
-        ndim = len(distributionClass.name)
+        #self.values = np.zeros((ndim,nSamples))
+        ndim , nSamples = np.shape(self.values)
+        #ndim = len(distributionClass.name)
         eigenvecs = self.U
         rel_imp = 0.0
         for index in range(n):
