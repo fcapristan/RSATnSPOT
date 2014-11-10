@@ -33,8 +33,7 @@ def getJacobian(fun,X,step):
         Xnew[index] = X[index] + step[index]
         fp1 = fun(Xnew)
         J[index,0] = (fp1-f0)/step[index]
-    
-    
+
     return J,f0
 
 
@@ -42,7 +41,7 @@ def steps(end,n):
     n=n+1
     start = 0
     if n<2:
-        raise Exception("behaviour not defined for n<2")
+        raise Exception("behavior not defined for n<2")
     step = (end-start)/float(n-1)
     return [int(round(start+x*step)) for x in range(n)]
 
@@ -256,7 +255,7 @@ class activeSubspace:
         
         #vars is a list of input vectors
         if step==None:
-            step = 0.1*np.ones((ndim))
+            step = 0.01*np.ones((ndim))
         self.step = step
         #nondim  and rescaled desired values new vars within [-1,1]
         
@@ -272,13 +271,16 @@ class activeSubspace:
             for index in range(nSamples):
                 
                 J,funcOut = funPrime(self.values[:,index])
+
                 self.outputs[index] = funcOut
                 sumJ = np.dot(J,J.T) + sumJ
         else:
             import pathos.multiprocessing as mp
             valsMulti = ((self.values).T).tolist()
             p = mp.Pool(multiPro)
+        
             resMulti= p.map(funPrime,valsMulti)
+         
             for index in range(nSamples):
                 Jlocal = resMulti[index][0]
                 funcOut = resMulti[index][1]
