@@ -3,6 +3,7 @@ import numpy
 
 def AIS(V,m):
     # takes the impact velocity relative to rotating planet in m/s and mass in kg
+    # Last check Nov 12,2014. Equations seems to work as intended
     casualty = 0
     W = m*9.81
 
