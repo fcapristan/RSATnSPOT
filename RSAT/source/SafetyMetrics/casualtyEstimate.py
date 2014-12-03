@@ -294,7 +294,7 @@ def calculateEc(lonlat,nSamples,delta,nsigma,key,xllcorner,yllcorner,cellsize,xM
     Ec = nPieces*(SMF.calculateec(ZZpdf,areaInt,arefMean,tempval,popMatrix))
     return (Ec,lonMesh,latMesh,ZZpdf)
 
-
+'''
 def calculateEcMatrixSheltering(lonlat,nSamples,delta,nsigma,keyPop,keyArea,xllcorner,yllcorner,cellsize,xMax,yMax,boundsOption,ncols,nrows,nPieces,casualtyArea,pdfoption,roofFraction):
     # calculates Ec by calculating pdf in P frame, then get corresponding population density for P frame.
     #print 'Npieces IN',nPieces
@@ -337,7 +337,7 @@ def calculateEcMatrixSheltering(lonlat,nSamples,delta,nsigma,keyPop,keyArea,xllc
         ymatlocations = [1]
         Ecmatrix = np.zeros((1,1))
     return Ec,Ecmatrix,xmatlocations,ymatlocations#,Ec2
-
+'''
 def getEc(popMatrix,weightedPDF,area):
     if weightedPDF==None:
         return 0,[]
@@ -348,10 +348,25 @@ def getEc(popMatrix,weightedPDF,area):
         Ec = np.sum(Ecmatrix)
         return Ec,Ecmatrix
 
+def getEcVc(popMatrix,weightedPDF,area,weightedPDF_sq):
+    if weightedPDF==None:
+        return [[0.,[]],0.]
+    else:
+        km2_to_m_2 = (1000.0)**2.0
+        #popMatrix = popMatrix/km2_to_m_2
+        Ecmatrix = (area/km2_to_m_2) *(popMatrix*weightedPDF)
+        Ec = np.sum(Ecmatrix)
+        # computing variance terms
+        popMatrix2 = (popMatrix/km2_to_m_2)**2.0
+
+        VcmatrixTerm = popMatrix2*weightedPDF_sq
+        Vc = Ec - Ec**2.0 + np.sum(VcmatrixTerm)
+        
+        return [[Ec,Ecmatrix],Vc]
 
 def calculateEcMatrixShelteringWeighted(lonlat,populationClass,weightArray,
                                         massSum,massTotal,boundsOption=1,delta = None,nMesh = None,
-                                        polygon=None,ArefList = None,massList=None,CDref = 1.0,debrisClass = None):
+                                        polygon=None,ArefList = None,massList=None,CDref = 1.0,debrisClass = None,variance=False):
     # calculates Ec by calculating pdf in P frame, then get corresponding population density for P frame.
     #massSum is the added mass for all sampled debris pieces
     #massTotal is the actual physical mass for the debris group...constrained by the vehicle size
@@ -455,6 +470,8 @@ def calculateEcMatrixShelteringWeighted(lonlat,populationClass,weightArray,
         nAref,nmass,nlonlat,nweightArray =groupBallisticCoeff(ArefList=ArefList,massList=massList,lonlat=lonlat,weight=weightArray,CDref=CDref)
         nSamplesTotal  = 0.0
         ZZpdfPframe = 0.0
+        ZZpdfPframe_sq = 0.0
+        Vc = 0.0
         for index in range(len(nAref)):
             lonlatPframe = originalFrame2Pframe(nlonlat[index],U)
             weightArray = nweightArray[index]
@@ -468,25 +485,35 @@ def calculateEcMatrixShelteringWeighted(lonlat,populationClass,weightArray,
             ZZpdfPframetemp = getWeightedPDFfromSetup(lonlatPframe,xMeshP,yMeshP,weightArray)
             ZZpdfPframe = float(nSamplesloc)*ZZpdfPframetemp + ZZpdfPframe
             
-        Ec,Ecmatrix = getEc(popMatrix,ZZpdfPframe,areaInt)
+            if variance==True:
+                ZZpdfPframetemp_sq = getWeightedPDFfromSetup(lonlatPframe,xMeshP,yMeshP,weightArray**2.0)
+                ZZpdfPframe_sq = float(nSamplesloc)*ZZpdfPframetemp_sq + ZZpdfPframe_sq
 
         
+        if variance ==False:
+            Ec,Ecmatrix = getEc(popMatrix,ZZpdfPframe,areaInt)
+        else :
+            [[Ec,Ecmatrix],Vc] = getEcVc(popMatrix,ZZpdfPframe,areaInt,ZZpdfPframe_sq)
         Ec = Ec*kt
+        Vc = Vc*kt # missing one term...temporary...delete this comment when second term added
         Ecmatrix = Ecmatrix*kt
     
       
     else:
         print 'No pdf calc',np.sum(popMatrix)
         Ec = 0.0
+        Vc = 0.0
         #Ec2 = 0.0
         xmatlocations = [1]
         ymatlocations = [1]
         Ecmatrix = np.zeros((1,1))
     
-    
-    return Ec,Ecmatrix,xmatlocations,ymatlocations#,Ec2
+    if variance==False:
+        return Ec,Ecmatrix,xmatlocations,ymatlocations#,Ec2
+    else :
+        return Ec,Ecmatrix,xmatlocations,ymatlocations,Vc#,Ec2
 
-
+'''
 
 def calculateWeightedKDE(lonlat,nSamplesModeled,delta,weightArray,massSum,massTotal,ArefList = None,massList=None,CDref = 1.0,debrisClass = None):
     # calculates Ec by calculating pdf in P frame, then get corresponding population density for P frame.
@@ -570,7 +597,7 @@ def getEcfromWeightedKDE(lonOrMesh=None,latOrMesh=None,ZZpdfPframe=None,delta=No
     Ec = Ec*kt
     Ecmatrix = Ecmatrix*kt
     return Ec,Ecmatrix
-
+'''
 
 
 def getxyz(lonlat):
