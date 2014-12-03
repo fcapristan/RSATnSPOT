@@ -21,7 +21,10 @@ def sample(bounds=None,dist=None,nsamples=1):
             X0 = np.zeros((nvars))
             for index in range(nvars):
                 if bounds!=None:
-                    curval = accrej(muvals[index],stdvals[index],bounds[index][0],bounds[index][1])
+                    if bounds[index][0]==bounds[index][1]:
+	               curval = bounds[index][0]
+                    else:
+                       curval = accrej(muvals[index],stdvals[index],bounds[index][0],bounds[index][1])
                 else:
                     curval= np.random.normal(loc=muvals[index],scale=stdvals[index])
                 X0[index] = curval
@@ -38,28 +41,49 @@ def accrej(mu,std,low,high):
     return sampVal
 
 
-def optimMin(bounds=None,dist=None,fun=None,epsilonVar=0.000001,nMax = 5000):
+def optimMin(bounds=None,dist=None,fun=None,epsilonVar=0.0000001,nMax = 5000,nsamples=100,option='min'):
+    import copy
     #this works better if everything is scaled appropriately
     varOut = np.inf
-    nsamples = 60
-
+    Yold = np.array([])
+    Xoldn = None
     counter = 1
     while (varOut > epsilonVar)and(counter<= nMax):
         X = sample(bounds=bounds,dist=dist,nsamples=nsamples) # samples X
         Xmat = np.array(X)
         Y = np.zeros((nsamples))
+ 
         for index in range(nsamples):
             Y[index] = fun(X[index])
-        indexSorted = np.argsort(Y)
-        indexSorted = indexSorted[0:10]
+            #print X[index],Y[index]
+        #print Xmat,Xoldn
+        Y = np.concatenate((Y,Yold))
+        if Xoldn!=None:
+            Xmat = np.concatenate((Xmat,Xoldn),axis=0)
+
+        if option=='min':
+            indexSorted = np.argsort(Y)
+        elif option=='max':
+            indexSorted =  np.argsort(-Y)
+        else:
+            print 'Option in optimMin does not exist'
+            print 'It can only be min or max'
+            exit()
+        indexSorted = indexSorted[0:20]
+        #print 'XN'
+        #print Xmat
         Xn = Xmat[indexSorted]
+        #print 'Xn',Xn
         newMean = np.mean(Xn,axis=0)
         newvar = np.var(Xn,axis=0)
         dist = [newMean,newvar**.5]
         varOut = np.max(newvar)
         YvarOut = np.var(Y)
-        varOut = np.min([varOut,YvarOut])
+        varOut = np.min([varOut,10.*YvarOut])
         counter = counter + 1
+        Xoldn = copy.copy(Xn)
+	Yold = Y[indexSorted[0:10]]
+
     if counter>=nMax:
         message='Maximum number of iterations reached'
         success = False
@@ -75,5 +99,5 @@ if __name__ == '__main__':
     
     bounds = [[-100,100],[-100,100]]
     (Xopt,varOut,success,message) =optimMin(bounds=bounds,fun=myfun)
-    print Xopt,varOut
-    print message
+    #print Xopt,varOut
+    #print message
