@@ -86,13 +86,26 @@ class myfunction(OpenTURNSPythonFunction):
         return (self._exec_sample([in_point]))
 
     def _exec_sample(self, in_sample):
+
+
+        
         Xlist=[[s for s in p] for p in in_sample]
         p = mp.Pool(self.Nproc)
         myfun = self.myfun 
         samp = p.map(myfun,Xlist)
         return samp
-
-
+        
+        '''
+        Xlist=[[s for s in p] for p in in_sample]
+        sampOut = np.zeros(len(Xlist))
+        for index in range(len(Xlist)):
+            sampOut[index] = self.myfun(Xlist[index])
+        #p = mp.Pool(self.Nproc)
+        #myfun = lambda X:EcCalc(X,self.tfail)
+        #samp = p.map(myfun,Xlist)
+        #samp = self.fun(Xlist)
+        return sampOut
+        '''
 
     
 

@@ -360,26 +360,33 @@ def getEcVc(popMatrix,weightedPDF,area,weightedPDF_sq):
         popMatrix2 = (popMatrix/km2_to_m_2)**2.0
 
         VcmatrixTerm = popMatrix2*weightedPDF_sq
-        Vc = Ec - Ec**2.0 + np.sum(VcmatrixTerm)
-        
+        Vc = Ec - Ec**2.0 + area*np.sum(VcmatrixTerm)
         return [[Ec,Ecmatrix],Vc]
 
+
+
+
+
+#def calculateEcMatrixShelteringWeighted(lonlat,populationClass,weightArray,
+#                                        massSum,massTotalConserved,boundsOption=1,delta = None,nMesh = None,
+#                                        polygon=None,ArefList = None,massList=None,CDref = 1.0,
+#                                        debrisClass = None , variance = False):
 def calculateEcMatrixShelteringWeighted(lonlat,populationClass,weightArray,
-                                        massSum,massTotal,boundsOption=1,delta = None,nMesh = None,
-                                        polygon=None,ArefList = None,massList=None,CDref = 1.0,debrisClass = None,variance=False):
+                                        E_N_simulated,V_N_simulated,fractionOnGround=1.0,boundsOption=1,delta = None,nMesh = None,
+                                        polygon=None,ArefList = None,massList=None,CDref = 1.0,
+                                        debrisClass = None , variance = False):
     # calculates Ec by calculating pdf in P frame, then get corresponding population density for P frame.
-    #massSum is the added mass for all sampled debris pieces
-    #massTotal is the actual physical mass for the debris group...constrained by the vehicle size
-    # nSamplesModeled is not necessary equal to the number of samples in lonlat..because
-    #some pieces might be in orbit, or would not cause a casualty. It is needed to calculate the weights in the KDE
+    # E_N_simulated is the expected number of debris pieces from the debris group
+    # V_N_simulated is the variance of the number of debris pieces from the debris group
+    # fractionOnground is the fraction of the debris pieces that impact the ground (pieces could reach orbit)
     
     # this version uses the rotated pdf (actual lon lat coordinates)
     nSamples,otherdim = np.shape(lonlat)
-    
-    if nSamples==0:
-        return 0,[],[],[]
-    
-    
+    E_N_ground = fractionOnGround*E_N_simulated
+    V_N_ground = (fractionOnGround**2.0) * V_N_simulated
+    if nSamples==0 or np.sum(weightArray)==0:
+        return 0,[],[],[],0
+    ################################################################################################
     #making sure we have distributions and not just point landing in the same location
     #KDE cannot handle points landing in the same location
     lonCheck = lonlat[:,0]
@@ -390,12 +397,8 @@ def calculateEcMatrixShelteringWeighted(lonlat,populationClass,weightArray,
     minlat = latCheck.min()
     dlon = maxlon - minlon
     dlat = maxlat - minlat
-    
-    
-    if np.sum(weightArray)==0.:
-        Ec = 0.0
-        return Ec,[],[],[]    
-    
+
+    #special case....deterministic point.. KDE not necessary
     if (dlon*dlat<=10**-25):
         lonOrMesh = [lonCheck.mean()]
         latOrMesh = [latCheck.mean()]
@@ -409,25 +412,13 @@ def calculateEcMatrixShelteringWeighted(lonlat,populationClass,weightArray,
             desval = 0.0
             popMatrix = SMF.updatematpolygon(lonOrMesh,latOrMesh,xpol,ypol,popMatrix,desval)
         km2_to_m_2 = (1000.0)**2.0   
-        massave = massSum/nSamples
-        NpiecesAve = massTotal/massave
-        Ec = np.sum(weightArray)/nSamples *(popMatrix[0][0]/km2_to_m_2)*NpiecesAve
-        #print 'Check',NpiecesAve,popMatrix,np.sum(weightArray)/nSamples
-        return Ec,[],[],[]
-        
-    
+        Ec = np.sum(weightArray)/nSamples *(popMatrix[0][0]/km2_to_m_2)*E_N_ground
+        return Ec,[],[],[],0 
+    ################################################################################################ 
+
+   
     popOrigArea = populationClass.cellsize**2
     
-    #mc = massSum/float(nSamplesModeled)
-    #kt = massTotal/mc
-    #print kt
-    kt = (massTotal/massSum)#*float(nSamples) # this takes into account that sometimes pieces of debris do not make it to the ground (e.g in orbit).
-    # It adjusts the (1/n_pdf) term in the pdf calculation to 1/n_modeled
-
-    #exit()
-    
-    
- 
     
     (PframeVals,OrFrameVals,rotVals) = pdfSetup(lonlat,pdfoption='kde',delta=delta,nMesh=nMesh)
     
@@ -474,29 +465,29 @@ def calculateEcMatrixShelteringWeighted(lonlat,populationClass,weightArray,
         Vc = 0.0
         for index in range(len(nAref)):
             lonlatPframe = originalFrame2Pframe(nlonlat[index],U)
-            weightArray = nweightArray[index]
-            nSamplesloc = len(weightArray)
+            weightArrayLocal = nweightArray[index]
+            nSamplesloc = len(weightArrayLocal)
             nSamplesTotal = nSamplesloc + nSamplesTotal
             if nSamplesloc<=10:
                 print 'Error: Adjust debris catalog. Current samples for this subgroup (rearranged by ballistic coeff) <10 samples '
                 print 'Try subdiviging this debris group or add more samples'
                 print 'Check debris catalog',debrisClass.name
                 exit(2)
-            ZZpdfPframetemp = getWeightedPDFfromSetup(lonlatPframe,xMeshP,yMeshP,weightArray)
-            ZZpdfPframe = float(nSamplesloc)*ZZpdfPframetemp + ZZpdfPframe
-            
-            if variance==True:
-                ZZpdfPframetemp_sq = getWeightedPDFfromSetup(lonlatPframe,xMeshP,yMeshP,weightArray**2.0)
-                ZZpdfPframe_sq = float(nSamplesloc)*ZZpdfPframetemp_sq + ZZpdfPframe_sq
+
+            ZZpdfPframetemp = getWeightedPDFfromSetup(lonlatPframe,xMeshP,yMeshP,weightArrayLocal)
+            percentPDF = float(nSamplesloc)/float(nSamples)
+            assert (percentPDF<=1.0)
+            ZZpdfPframe = percentPDF*ZZpdfPframetemp + ZZpdfPframe
+          
+            ZZpdfPframetemp_sq = getWeightedPDFfromSetup(lonlatPframe,xMeshP,yMeshP,weightArrayLocal**2.0)
+            ZZpdfPframe_sq = percentPDF*ZZpdfPframetemp_sq + ZZpdfPframe_sq
 
         
-        if variance ==False:
-            Ec,Ecmatrix = getEc(popMatrix,ZZpdfPframe,areaInt)
-        else :
-            [[Ec,Ecmatrix],Vc] = getEcVc(popMatrix,ZZpdfPframe,areaInt,ZZpdfPframe_sq)
-        Ec = Ec*kt
-        Vc = Vc*kt # missing one term...temporary...delete this comment when second term added
-        Ecmatrix = Ecmatrix*kt
+       
+        [[Ecsingle,Ecmatrixsingle],Vcsingle] = getEcVc(popMatrix,ZZpdfPframe,areaInt,ZZpdfPframe_sq)
+        Ec = Ecsingle*E_N_ground
+        Vc = (Vcsingle*E_N_ground) + (V_N_ground * Ecsingle**2.0) # variance computation
+        Ecmatrix = Ecmatrixsingle*E_N_ground
     
       
     else:
@@ -507,11 +498,9 @@ def calculateEcMatrixShelteringWeighted(lonlat,populationClass,weightArray,
         xmatlocations = [1]
         ymatlocations = [1]
         Ecmatrix = np.zeros((1,1))
-    
-    if variance==False:
-        return Ec,Ecmatrix,xmatlocations,ymatlocations#,Ec2
-    else :
-        return Ec,Ecmatrix,xmatlocations,ymatlocations,Vc#,Ec2
+
+
+    return Ec,Ecmatrix,xmatlocations,ymatlocations,Vc
 
 '''
 

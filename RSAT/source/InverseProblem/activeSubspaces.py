@@ -4,6 +4,7 @@
 import numpy as np
 import time
 import os
+import copy
 
 def normalizeX(distribution,X):
     ndim,nSamples = np.shape(X)
@@ -20,24 +21,37 @@ def normalizeX(distribution,X):
 
 
 def getJacobian(fun,X,step):
-    import copy
     X = np.array(X)
     #print X
     #fun-< function, X->vector of inputs,step->step vector for finite diff
     f0 = fun(X)
     n = len(X)
     J = np.zeros((n,1))
-    #print 'Xor',X
-    print 'Computing J'
     for index in range(n):
         Xnew = copy.copy(X)
         Xnew[index] = X[index] + step[index]
         fp1 = fun(Xnew)
         J[index,0] = (fp1-f0)/step[index]
-    print J
-    exit()
-    
     return J,f0
+
+def getJacobianMultiOut(fun,X,step,ndimOut=1):
+    X = np.array(X)
+    #print X
+    #fun-< function, X->vector of inputs,step->step vector for finite diff
+    f0_array = fun(X)
+    f0_array = np.array(f0_array) # making sure it is a numpy array
+    assert(len(f0_array)==ndimOut)
+    n = len(X)
+    J_array = np.zeros((n,ndimOut))# [np.zeros((n,1))]*ndimOut
+    for index in range(n):
+        Xnew = copy.copy(X)
+        Xnew[index] = X[index] + step[index]
+        fp1_array = np.array(fun(Xnew))
+        
+        J_array[index,:] = (fp1_array -f0_array)/step[index]
+    return J_array,f0_array
+
+
 
 
 def steps(end,n):
@@ -366,4 +380,168 @@ class activeSubspace:
             self.important_control_index = check_index
         
         self.important_var_index = imp_index 
+
+
+class activeSubspace_multiOutput:
+    def __init__(self):
+        self.eigenvals = []
+        self.eigenvecs = []
+        self.Nsubspace = []
+        self.outputs = []
+    def getSubspace(self,fun=None,funPrime=None,funDim=1,distributionClass=None,nSamples=None,nsubspace=None,step=None,controlIndex=None,multiPro=1,threshold=.95):
+        ndim = len(distributionClass.name)
+        self.ndim = ndim
+        self.base = np.random.uniform(size=[ndim,nSamples])
+        self.values = np.zeros((ndim,nSamples))
+        self.controlIndex = controlIndex
+        self.funDim = funDim
+        lowLim = distributionClass.minVal
+        upLim = distributionClass.maxVal
+        deltaVec = upLim - lowLim
+        
+        for index in range(ndim):
+            self.values[index,:] = self.base[index,:]*(deltaVec[index])+lowLim[index]
+        self.base = 2.0*self.base-1. # adjusting bounds so that it is bounded by [-1,1] instead of [0,1]
+        
+        #vars is a list of input vectors
+        if step==None:
+            step = 0.01*np.ones((ndim))
+        self.step = step
+        #nondim  and rescaled desired values new vars within [-1,1]
+        
+        A = np.diag(.5*deltaVec)
+        self.AJA = A #storing A matrix to be used in computations outside this routine (giving the user more control)
+        #calculating Jacobian
+        sumJ = np.zeros((funDim,ndim,ndim))
+        self.outputs = np.zeros((funDim,nSamples))-999999.
+        self.J = np.zeros((funDim,ndim,nSamples))
+        if funPrime==None:
+            funPrime = lambda X:getJacobianMultiOut(fun,X,step,ndimOut=funDim)# getJacobian(fun,X,step)
+        
+        
+        if multiPro==1:
+            for index in range(nSamples):
+                J,funcOut = funPrime(self.values[:,index])
+                for indexDim in range(funDim):
+                    Jtemp = J[:,indexDim,None]                
+                    self.J[indexDim,:,index] = Jtemp[:,0]
+                    self.outputs[indexDim,index] = funcOut[indexDim]
+                    sumJ[indexDim,:,:] = np.dot(Jtemp,Jtemp.T) + sumJ[indexDim,:,:]
+        else:
+            import pathos.multiprocessing as mp
+            valsMulti = ((self.values).T).tolist()
+            p = mp.Pool(multiPro)
+            resMulti= p.map(funPrime,valsMulti)
+            for index in range(nSamples):
+                J = resMulti[index][0]
+                funcOut = resMulti[index][1]
+                for indexDim in range(funDim):
+                    Jtemp = J[:,indexDim,None]                
+                    self.J[indexDim,:,index] = Jtemp[:,0]
+
+                    self.outputs[indexDim,index] = funcOut[indexDim]
+                    sumJ[indexDim,:,:] = np.dot(Jtemp,Jtemp.T) + sumJ[indexDim,:,:]
+   
+        self.eigenvals = []#np.zeros((ndim,funDim))
+        self.eigenvecs = []#np.zeros((funDim,ndim,ndim))
+        self.Nsubspace = [0]*funDim
+        self.U = []
+        self.subspaceBase = []
+        for index in range(funDim):
+
+            sumJ[index,:,:] = np.dot(A,sumJ[index,:,:])#could change this to make matrix calc faster (elem*row) 
+            sumJ[index,:,:] = np.dot(sumJ[index,:,:],A)
+        
+            sumJ[index,:,:] = (1./np.float(nSamples))*sumJ[index,:,:]
+
+
+            eigenvals,eigenvecs = np.linalg.eigh(sumJ[index,:,:])
+        
+            idx = eigenvals.argsort()[::-1]   # sorting from highest to lowest
+            eigenvals = eigenvals[idx]
+            eigenvecs = eigenvecs[:,idx]  
+            self.eigenvals.append(eigenvals)# [:,index] = eigenvals
+            self.eigenvecs.append(eigenvecs)# [index,:,:] = eigenvecs
+
+            if nsubspace==None: #let the code pick the number of eigenvalues
+                nsubspace = self.selectSubspaces(eigenvals,threshold=threshold)
+
+            self.Nsubspace[index] = nsubspace
+
+            self.U.append(eigenvecs[:,0:nsubspace])
+            self.subspaceBase.append(np.dot((self.U[index]).T,self.base))
+ 
+
+    def updateSubspace(self,nsubspace=None,threshold=None):
+        self.U = []
+        self.subspaceBase = []
+        self.Nsubspace = [0]*self.funDim
+        if nsubspace==None:
+            if threshold==None:
+                print 'Error in updateSubspace. No specified nsubspace or threshold'
+                exit()
+            for index in range(self.funDim):
+                eigenvals = self.eigenvals[index]
+                eigenvecs = self.eigenvecs[index]
+                nsubspace = self.selectSubspaces(eigenvals,threshold=threshold)
+                self.Nsubspace[index] = nsubspace
+
+                self.U.append(eigenvecs[:,0:nsubspace])
+                self.subspaceBase.append(np.dot((self.U[index]).T,self.base))
+
+        else :
+            if threshold!=None:
+                print 'Error in updateSubspace. Cannot specify both nsubspace and threshold'
+                exit()
+            for index in range(self.funDim):
+
+                self.Nsubspace[index] = nsubspace
+                self.U.append(eigenvecs[:,0:nsubspace])
+                self.subspaceBase.append(np.dot((self.U[index]).T,self.base))
+
+    
+    def selectSubspaces(self,eigenvals,threshold=None):
+        #eigenvals = self.eigenvals
+        #eigrnvalues must be in decreasing order
+        totalSum = np.sum(eigenvals)
+        currSum = 0.0
+        
+        for index in range(len(eigenvals)):
+            currSum = currSum + eigenvals[index]
+            #print 'temp',currSum/totalSum,index
+            
+            if (currSum/totalSum)>=threshold:
+                #print 'Final',currSum/totalSum,index
+                break
+        Nsubspace = index + 1
+        return Nsubspace
+    '''
+    
+    def importantVariables(self):#Any other method such as 
+        n = self.Nsubspace
+        eigenvals = self.eigenvals[0:n]
+        #self.values = np.zeros((ndim,nSamples))
+        ndim , nSamples = np.shape(self.values)
+        #ndim = len(distributionClass.name)
+        eigenvecs = self.U
+        rel_imp = 0.0
+        for index in range(n):
+            rel_imp = np.abs(eigenvecs[:,index])*eigenvals[index] + rel_imp
+        self.variable_importance = rel_imp/rel_imp.max()
+        imp_index = self.variable_importance>.05
+        self.important_index = imp_index
+        if self.controlIndex!=None:
+            check_index = (np.array(imp_index)&np.array(self.controlIndex))
+            if np.sum(check_index)==0:
+                print 'Nothing to optimize'
+            self.important_control_index = check_index
+        
+        self.important_var_index = imp_index 
+
+    '''
+
+
+
+
+
 
