@@ -11,7 +11,7 @@ def plotCobWeb(X,Y,Ybounds):
     deltax = xMax - xMin
     yMax = np.amax(Y)
     yMin = np.amin(Y)
-    print yMin,yMax
+    #print yMin,yMax
     Xnorm = np.zeros((ndim,nSamples))
     Ynorm = (Y - yMin)/(yMax-yMin)
     xlabel = ['X']*(ndim+1)
@@ -23,6 +23,7 @@ def plotCobWeb(X,Y,Ybounds):
     varOut = np.concatenate((Xnorm,[Ynorm]),axis=0)
     xlabel[ndim]  = 'Y'
     index = (Y<=Ybounds[1])&(Y>=Ybounds[0])
+    #print Ybounds
     try:
         plt.plot(varOut[:,~index],'c',figure=fig)
     except:

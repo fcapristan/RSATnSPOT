@@ -272,14 +272,57 @@ def getWeightedPDFfromSetup(lonlatPframe,xMeshP,yMeshP,weightArray):
 
 
 
-def calculateEcBlast(lon,lat,keyPop,keyArea,xllcorner,yllcorner,cellsize,xMax,yMax,boundsOption,ncols,nrows,areaBlast):
+def calculateEcBlast(lon,lat,populationClass,boundsOption,rad_Exp_Blast,angleDegBlast,polygon=None,desval=0.0 ):
     # TO DO...update to use classes instead of list for population
     import safetyMetrics as SMF
+    import orbitTools
+    #km2_to_m_2 = (1000.0)**2.0
+    m2_to_km2 = 1/(1000.0)**2.0 
+    #print lon,lat,angleDegBlast,rad_Exp_Blast
+    # starting a mesh for blast overpressure
+    lonVec = np.linspace(lon - 1.2*angleDegBlast,lon + 1.2*angleDegBlast,50)
+    latVec = np.linspace(lat - 1.2*angleDegBlast,lat + 1.2*angleDegBlast,52)
+    RplanetCirc = 6371000.8 # meters spherical Earth
+    dlon = ( lonVec[1] - lonVec[0]) * np.pi/180.
+    dlat = (latVec[1] - latVec[0]) * np.pi/180.
+
+    lonMesh,latMesh = np.meshgrid(lonVec,latVec)
+
+    popdensity,xMatLoc,yMatLoc = SMF.agsgetdensity(populationClass.keyPop,populationClass.keyArea,
+                                                               populationClass.xllcorner,populationClass.yllcorner,
+                                                               populationClass.cellsize,lonMesh,latMesh,
+                                                               populationClass.xMax,populationClass.yMax,boundsOption)  
+    if polygon!=None:
+        xpol = polygon[0]
+        ypol = polygon[1]
+        matout = SMF.checkpolygon(lonMesh,latMesh,xpol,ypol)
+        popdensity = SMF.updatematpolygon(lonMesh,latMesh,xpol,ypol,popdensity,desval)
+
     
-    popdensity,xmatlocations,ymatlocations = SMF.agsgetdensity(keyPop,keyArea,xllcorner,yllcorner,cellsize,[lon],[lat],xMax,yMax,boundsOption,[ncols,nrows,1,1])
+
+    Ac = (dlon*dlat)*( RplanetCirc**2) * np.cos(latMesh*np.pi/180.)  
+    r0= orbitTools.latlonalt2ECEF(lat,lon,0,0)
+    rX,rY,rZ = orbitTools.latlonalt2ECEF(latMesh,lonMesh,0.,0)
+
+    distMat = ((rX-r0[0])**2 + (rY-r0[1])**2 + (rZ-r0[2])**2)**.5
+  
+    indexSphere =  distMat > rad_Exp_Blast
+    Ac[indexSphere] = 0.0
+
+    casualties = popdensity  * (Ac*m2_to_km2)
+    #print np.sum(Ac)*m2_to_km2
+    #currPopulation = np.asarray(deepcopy(populationClass.keyPop),order='F') # making sure it is Fortran ordered
+    #print 'P1',populationClass.keyPop[xMatLoc,yMatLoc]
+    row,col = np.shape(xMatLoc)
+    for i in range(row):
+        for j in range(col):
+            populationClass.keyPop[xMatLoc[i,j],yMatLoc[i,j]] = max(populationClass.keyPop[xMatLoc[i,j],yMatLoc[i,j]]- casualties[i,j],0.0) # updating population counts
+
+    #print 'P2',populationClass.keyPop[xMatLoc,yMatLoc]
+
     #print 'Popden',popdensity
-    Ec = popdensity*areaBlast*(.001)**2
-    return (Ec[0,0],xmatlocations[0,0],ymatlocations[0,0])
+    #print np.sum(casualties),np.sum(Ac),rad_Exp_Blast**2*np.pi
+    return np.sum(casualties) , populationClass
 
 
 
@@ -402,9 +445,22 @@ def calculateEcMatrixShelteringWeighted(lonlat,populationClass,weightArray,
     if (dlon*dlat<=10**-25):
         lonOrMesh = [lonCheck.mean()]
         latOrMesh = [latCheck.mean()]
-        popMatrix = SMF.agsgetvals(populationClass.keyDen,populationClass.xllcorner,populationClass.yllcorner,
-                                   populationClass.cellsize,lonOrMesh,latOrMesh,populationClass.xMax,
-                                   populationClass.yMax,boundsOption)
+        if populationClass.keyDen ==None:
+            popMatrix,xmatlocations,ymatlocations = SMF.agsgetdensity(populationClass.keyPop,populationClass.keyArea,
+                                                                      populationClass.xllcorner,populationClass.yllcorner,
+                                                                      populationClass.cellsize,lonOrMesh,latOrMesh,
+                                                                      populationClass.xMax,populationClass.yMax,
+                                                                      boundsOption,[populationClass.ncols,populationClass.nrows,xlen,ylen])
+        else:
+            popMatrix = SMF.agsgetvals(populationClass.keyDen,populationClass.xllcorner,populationClass.yllcorner,
+                                       populationClass.cellsize,lonOrMesh,latOrMesh,populationClass.xMax,
+                                       populationClass.yMax,boundsOption)
+            
+            xmatlocations = []
+            ymatlocations = []
+        #popMatrix = SMF.agsgetvals(populationClass.keyDen,populationClass.xllcorner,populationClass.yllcorner,
+        #                           populationClass.cellsize,lonOrMesh,latOrMesh,populationClass.xMax,
+        #                           populationClass.yMax,boundsOption)
         if polygon!=None:
             xpol = polygon[0]
             ypol = polygon[1]

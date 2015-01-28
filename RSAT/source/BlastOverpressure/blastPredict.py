@@ -27,6 +27,32 @@ def getDangerArea(alt=None,pcritical=None,Et=None,Mf=None):
         area = (-REarth**2)*(np.cos(alpha) - 1.)*2.*np.pi
     
     return area,pbarcrit
+def getDangerAngleDeg(alt=None,pcritical=None,Et=None,Mf=None):
+    # returns the angle offset (lat lon) where the blast overpressure has an effect
+    REarth = 6378145. #[m]
+    p0 = stdatmf(alt)
+    Rblast = 0.0
+    pbarcrit = 0.0
+    rad_a = 0.0
+    if p0>0.:
+        Rblast,pbarcrit = getRcritical(pcritical,p0,Et,Mf)
+    if alt>Rblast:
+        angleDeg = 0
+    else:
+        
+        #area = (Rblast**2-alt**2)*np.pi # this assumes a flat EARTH...GOOD APPROXIMATION!!
+        
+        # assumes spherical Earth
+        d = REarth + alt
+        a = (REarth**2-Rblast**2 + d**2)/(2.*d)
+        alpha = np.arccos(a/REarth)
+        area = (-REarth**2)*(np.cos(alpha) - 1.)*2.*np.pi
+        angleDeg = alpha * 180./np.pi
+        rad_a = (0.5/d) * np.sqrt(4.*(d*REarth)**2. - (d**2 - Rblast**2 + REarth**2)**2)
+    return rad_a,angleDeg,pbarcrit
+
+
+
 
 
 def solidPropellantYield(mass = None,S='soft',v = None):

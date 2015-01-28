@@ -305,7 +305,7 @@ contains
     double precision , dimension(4) :: dmdvdt
     double precision , dimension(3) :: VwindLocal,Vwind,dvdt
     double precision :: altitude , rho, g, newden,newU,newV,newW,dm!,rotAngle
-    double precision :: clat,clon,Minf,speedOfSound,CDLocal,CLLocal,VinfMag
+    double precision :: clat,clon,Minf,speedOfSound,CDLocal,CLLocal,VinfMag,spx,spy,spz
     double precision , dimension(3,3) :: localRotation
     double precision , dimension(3) :: Tvector,uvector,rxuvector,u1vector,c1unit,c2unit,rxu1vector,d2unit,u2vector
     ! print *, 'Solving dvdt'   
@@ -452,16 +452,28 @@ contains
 
    !!!! this section to handle offsets in thrust angle
     if (norm(Tvector)>0)then
-    uvector = Tvector/norm(Tvector)
-    rxuvector = cross(r,uvector)
-   !uvector,rxuvector,u1vector,c1unit,c2unit,rxu1vector,d2unit
-    c1unit = rxuvector/norm(rxuvector)
-    u1vector = cos(thrustOffAngleRad(1))*uvector + sin(thrustOffAngleRad(1))*c1unit
-    rxu1vector = cross(r,u1vector)
-    c2unit = rxu1vector/norm(rxu1vector)
-    d2unit = cross(u1vector,c2unit)/norm(cross(u1vector,c2unit))
-    u2vector = cos(thrustOffAngleRad(2))*u1vector + sin(thrustOffAngleRad(2))*d2unit
-    Tvector = norm(Tvector)*u2vector ! recalculating thrust vector
+       !uvector = Tvector/norm(Tvector)
+       !rxuvector = cross(r,uvector)
+
+       !c1unit = rxuvector/norm(rxuvector)
+       !u1vector = cos(thrustOffAngleRad(1))*uvector + sin(thrustOffAngleRad(1))*c1unit
+       !rxu1vector = cross(r,u1vector)
+       !c2unit = rxu1vector/norm(rxu1vector)
+       !d2unit = cross(u1vector,c2unit)/norm(cross(u1vector,c2unit))
+       !u2vector = cos(thrustOffAngleRad(2))*u1vector + sin(thrustOffAngleRad(2))*d2unit
+       !Tvector = norm(Tvector)*u2vector ! recalculating thrust vector
+
+
+        uvector = Tvector/norm(Tvector)
+        rxuvector = cross(r,uvector)
+        c1unit = rxuvector/norm(rxuvector)
+        c2unit = cross(uvector,c1unit)/norm(cross(uvector,c1unit))
+        ! the coordinate system now contains uvector,c1unit, and c2unit as the basis
+        spx = cos(thrustOffAngleRad(1))*cos(thrustOffAngleRad(2))
+        spy = cos(thrustOffAngleRad(1))*sin(thrustOffAngleRad(2))
+        spz = sin(thrustOffAngleRad(1))
+        Tvector = norm(Tvector)*(spx*uvector + spy*c1unit + spz*c2unit)
+
     end if
    
 

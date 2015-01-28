@@ -783,16 +783,18 @@ def generateRandomMultiTrajMalFunc(missionList,tLaunchDesired,dt,timeMalfunc,del
             ntime = len(timelist)
             
             
-            
+            # letting vehicle propagate until propOption is reached (final mass from input parameter from SPOT!! not from propagated trajectory or desired time). 
             finalconditions,finalderivs = op.propagate(initialstate, m0, propCond,sref,minfcd,cd,cloption, minfcl,cl,loverd,atmosoption, altitudelist,densitylist,ulist,vlist ,wlist,Fmat,timelist,isp,geoptions,filename,planetmodel,dtinterval,ndtinterval,thetag,propOption,ThrustOffsetAngDeg,ncd=len(minfcd),ncl=len(minfcl),ntime=ntime,nlist=len(altitudelist))
             
             tfTemp = fixPropagateResultsGetTime(finalconditions)
-            
-            if timeMalfunc<=tfTemp[-1]:
+        
+            if (timeMalfunc - currentTime )<=tfTemp[-1]:
    
                 geoptions=0
                 #print 'TOff',ThrustOffsetAngDegMalFunc
-                finalconditions,finalderivs = malFunc.propagate(initialstate,m0,propCond,sref,minfcd,cd,cloption,minfcl,cl,loverd,atmosoption,altitudelist,densitylist,ulist,vlist,wlist,Fmat,timeMalfunc,deltatfail,timelist,isp,geoptions,filename,planetmodel,dtinterval,ndtinterval,thetag,propOption,ThrustOffsetAngDegMalFunc)
+
+                timeMalfuncLocal = timeMalfunc -currentTime
+                finalconditions,finalderivs = malFunc.propagate(initialstate,m0,propCond,sref,minfcd,cd,cloption,minfcl,cl,loverd,atmosoption,altitudelist,densitylist,ulist,vlist,wlist,Fmat,timeMalfuncLocal,deltatfail,timelist,isp,geoptions,filename,planetmodel,dtinterval,ndtinterval,thetag,propOption,ThrustOffsetAngDegMalFunc)
                 malFuncBool = True
                 
             xc,yc,zc,Vxc,Vyc,Vzc,mc,tc,newfinalConditions = fixPropagateResults(finalconditions)
@@ -801,12 +803,13 @@ def generateRandomMultiTrajMalFunc(missionList,tLaunchDesired,dt,timeMalfunc,del
             #print 'new',newfinalConditions[-1]
             # print 'tc',tc,currentTime
 
-
+            #print 'tc',tc[0],tc[-1]
             tc = tc + currentTime
             initialstate = np.array([xc[-1],yc[-1],zc[-1],Vxc[-1],Vyc[-1],Vzc[-1]])
             mass0 = mc[-1]   
             
             currentTime = tc[-1] # updating time
+            #print 'Current',currentTime,tc[-1]
             thetagVector = omegaE*tc + thetag0
             thetag = omegaE*currentTime + thetag0 # updating thetag for next event
 
@@ -838,7 +841,7 @@ def generateRandomMultiTrajMalFunc(missionList,tLaunchDesired,dt,timeMalfunc,del
             currentTime = tc[-1] # updating time
             thetagVector = omegaE*tc + thetag0
             thetag = omegaE*currentTime + thetag0# updating thetag for next event
-        
+
     
         
 
@@ -846,6 +849,9 @@ def generateRandomMultiTrajMalFunc(missionList,tLaunchDesired,dt,timeMalfunc,del
         if malFuncBool==True:
             break
 
+    #print 'tt', timelist[-1],currentTime,timeMalfunc
+    if (timelist[-1] + currentTime - tc[-1])< timeMalfunc:
+        print 'Warning when propagating malfunction turns. Failure time seems to be greater than thrust profile time bounds' 
     return retList
 
 

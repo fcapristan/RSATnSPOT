@@ -24,6 +24,12 @@ class populationClass:
         self.nrows = nrows
         self.ncols = ncols
         self.keyDen = None
+        #epsilonVal = 1e-10
+        #self.keyArea[self.keyArea<=0.0] = epsilonVal
+        #self.keyPop[self.keyPop<0.0] = 0.0
+        #self.keyDen = self.keyPop/keyArea # computing population density from number of people and area
+
+
 
 
 class polygon:
