@@ -516,13 +516,13 @@ class activeSubspace_multiOutput:
         Nsubspace = index + 1
         return Nsubspace
     
-    def  selectSubspacesWeighted(self,fraction=None,indexDim=None):
+    def selectSubspacesWeighted(self,fraction=None,indexDim=None,nsubspace=None,threshold=None):
         assert(0.<=fraction<=1.)
         #first determine max and min values of Y outputs
         self.Uweighted = [0]*self.funDim
         self.subspaceBaseWeighted = [0]*self.funDim
         ymax = np.max(self.outputs[indexDim,:])
-        ymin = np.min(selef.outputs[indexDim,:])
+        ymin = np.min(self.outputs[indexDim,:])
         deltay = ymax - ymin
         ynormalized = (self.outputs[indexDim,:] - ymin)/deltay # outputs now range from 0 to 1
         
@@ -531,28 +531,32 @@ class activeSubspace_multiOutput:
         indexDesired = ynormalized>=fraction
         NweightedSamples = np.sum(indexDesired)
         nSamples = len(self.outputs[indexDim,:])
-        
-        weight = (float(nSamples)-float(NweightedSamples) ) / float(NweightedSamples) # simple ratio of samples
+        print 'nn',NweightedSamples
+        weight =  float(NweightedSamples)/(float(nSamples)-float(NweightedSamples) )  # simple ratio of samples
+        print 'w',weight
         #recalculate Covariance matrix by adding weight
         sumJweighted = 0.0
         for index in range(nSamples):
-            J = self.J[index,:,index]
-            print 'J has a shape of', np.shape(J)
+            J =  np.reshape(self.J[indexDim,:,index],(self.ndim,1))# not sure of NONE!!!!!!! NEED TO CHECK THIS!!!!!!!!!!!!!!!!!!!!1
+            #print 'J has a shape of', np.shape(J)
             if indexDesired[index]==True:
-                sumJweighted = weight*np.dot(J,J.T) + sumJweighted
+                sumJweighted = np.dot(weight*J,weight*J.T) + sumJweighted
+                #print J
             else:
-                sumJweighted = np.dot(J,J.T) + sumJweighted
-    
+                sumJweighted = 0* np.dot(J,J.T) + sumJweighted
+            #print np.dot(J,J.T)
         A = self.AJA
         sumJweighted = np.dot(A,sumJweighted)
         sumJweighted = np.dot(sumJweighted,A)
         sumJweighted = (1./np.float(nSamples))*sumJweighted
         
         eigenvals,eigenvecs = np.linalg.eigh(sumJweighted)
-            
+
         idx = eigenvals.argsort()[::-1]   # sorting from highest to lowest
         eigenvals = eigenvals[idx]
         eigenvecs = eigenvecs[:,idx]  
+        #print eigenvals
+        #print self.eigenvals[0]
         #self.eigenvalsWeig.append(eigenvals)# [:,index] = eigenvals
         #self.eigenvecs.append(eigenvecs)# [index,:,:] = eigenvecs
         
@@ -561,9 +565,15 @@ class activeSubspace_multiOutput:
         
         #self.Nsubspace[index] = nsubspace
         
-        self.Uweighted[indexDim] = eigenvecs[:,0:nsubspace]
-        self.subspaceBaseWeighted[indexDim] = np.dot((self.U[index]).T,self.base)
+        #self.Uweighted[indexDim] = eigenvecs[:,0:nsubspace]
+        #self.subspaceBaseWeighted[indexDim] = np.dot((self.U[index]).T,self.base)
+        self.UW = [0]*self.funDim
+        self.subspaceBaseW = [0]*self.funDim
+        self.UW[indexDim] = eigenvecs[:,0:nsubspace]
+        #print np.shape(self.U[indexDim])
+        #self.subspaceBase = [0]*self.funDim
         
+        self.subspaceBaseW[indexDim] = np.dot((self.UW[indexDim]).T,self.base)
     
     '''
     

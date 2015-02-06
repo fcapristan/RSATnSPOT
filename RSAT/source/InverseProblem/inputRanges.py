@@ -48,13 +48,26 @@ def binInputs(inputs,bin_limits):
                 ret.append(index)
     return ret
 
-def binInputs2(inputs,outputs,bin_limits):
-    ndim,Nsamples = np.shape(inputs)
-    print 'ndim',ndim
-    assert(Nsamples==len(outputs))
+def binInputs2(X,Y,bin_limits):
+
+    ndim,nSamples = np.shape(X)
+    assert(len(Y)==nSamples)
+    xMax = np.amax(X,axis=1)
+    xMin = np.amin(X,axis=1)
+    deltax = xMax - xMin
+    yMax = np.amax(Y)
+    yMin = np.amin(Y)
+    #print yMin,yMax
+    Xnorm = np.zeros((ndim,nSamples))
+    Ynorm = (Y - yMin)/(yMax-yMin)
+ 
+    for indim in range(ndim):
+        Xnorm[indim,:] = (X[indim,:] - xMin[indim])/deltax[indim]
+
+
     
-    comboArr = np.concatenate((inputs,[outputs]),0)
-    refInput = np.zeros((ndim+1,Nsamples))
+    comboArr = np.concatenate((Xnorm,[Ynorm]),0)
+    refInput = np.zeros((ndim+1,nSamples))
     bin_limits[-1]= 1.001
     for index in range(len(bin_limits)-1):
         ides = (comboArr >= bin_limits[index] ) & (comboArr <  bin_limits[index + 1 ] )
@@ -64,9 +77,9 @@ def binInputs2(inputs,outputs,bin_limits):
             
     inputsRange = bins[:,:-1].T
     outputsRange = bins[:,-1]
-    print outputsRange
+    #print outputsRange
     # Now eliminate duplicates
-    return inputsRange,outputsRange#np.array(bins)#(refInput.T).tolist()# set(list(refInput))
+    return inputsRange,outputsRange,[xMin,xMax],[yMin,yMax]#np.array(bins)#(refInput.T).tolist()# set(list(refInput))
 
 
 def purge_dublicates(X):
