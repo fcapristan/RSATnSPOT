@@ -314,9 +314,11 @@ def calculateEcBlast(lon,lat,populationClass,boundsOption,rad_Exp_Blast,angleDeg
     #currPopulation = np.asarray(deepcopy(populationClass.keyPop),order='F') # making sure it is Fortran ordered
     #print 'P1',populationClass.keyPop[xMatLoc,yMatLoc]
     row,col = np.shape(xMatLoc)
-    for i in range(row):
-        for j in range(col):
-            populationClass.keyPop[xMatLoc[i,j],yMatLoc[i,j]] = max(populationClass.keyPop[xMatLoc[i,j],yMatLoc[i,j]]- casualties[i,j],0.0) # updating population counts
+
+    # population was being updated every single time
+    #for i in range(row):
+    #    for j in range(col):
+    #        populationClass.keyPop[xMatLoc[i,j],yMatLoc[i,j]] = max(populationClass.keyPop[xMatLoc[i,j],yMatLoc[i,j]]- casualties[i,j],0.0) # updating population counts
 
     #print 'P2',populationClass.keyPop[xMatLoc,yMatLoc]
 
@@ -450,7 +452,7 @@ def calculateEcMatrixShelteringWeighted(lonlat,populationClass,weightArray,
                                                                       populationClass.xllcorner,populationClass.yllcorner,
                                                                       populationClass.cellsize,lonOrMesh,latOrMesh,
                                                                       populationClass.xMax,populationClass.yMax,
-                                                                      boundsOption,[populationClass.ncols,populationClass.nrows,xlen,ylen])
+                                                                      boundsOption)#,[populationClass.ncols,populationClass.nrows,xlen,ylen])
         else:
             popMatrix = SMF.agsgetvals(populationClass.keyDen,populationClass.xllcorner,populationClass.yllcorner,
                                        populationClass.cellsize,lonOrMesh,latOrMesh,populationClass.xMax,
@@ -492,7 +494,7 @@ def calculateEcMatrixShelteringWeighted(lonlat,populationClass,weightArray,
                                                                   populationClass.xllcorner,populationClass.yllcorner,
                                                                   populationClass.cellsize,lonOrMesh,latOrMesh,
                                                                   populationClass.xMax,populationClass.yMax,
-                                                                  boundsOption,[populationClass.ncols,populationClass.nrows,xlen,ylen])
+                                                                  boundsOption)#,[populationClass.ncols,populationClass.nrows,xlen,ylen])
     else:
         popMatrix = SMF.agsgetvals(populationClass.keyDen,populationClass.xllcorner,populationClass.yllcorner,
                                    populationClass.cellsize,lonOrMesh,latOrMesh,populationClass.xMax,

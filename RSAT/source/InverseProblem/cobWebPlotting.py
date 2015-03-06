@@ -23,6 +23,7 @@ def plotCobWeb(X,Y,Ybounds):
     varOut = np.concatenate((Xnorm,[Ynorm]),axis=0)
     xlabel[ndim]  = 'Y'
     index = (Y<=Ybounds[1])&(Y>=Ybounds[0])
+
     #print Ybounds
     try:
         plt.plot(varOut[:,~index],'c',figure=fig)

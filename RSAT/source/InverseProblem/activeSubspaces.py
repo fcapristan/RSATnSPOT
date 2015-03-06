@@ -27,17 +27,20 @@ def getJacobian(fun,X,step):
     f0 = fun(X)
     n = len(X)
     J = np.zeros((n,1))
+
     for index in range(n):
         Xnew = copy.copy(X)
         Xnew[index] = X[index] + step[index]
         fp1 = fun(Xnew)
         J[index,0] = (fp1-f0)/step[index]
+
     return J,f0
 
 def getJacobianMultiOut(fun,X,step,ndimOut=1):
     X = np.array(X)
     #print X
     #fun-< function, X->vector of inputs,step->step vector for finite diff
+    print 'Starting Jacobian',len(X)
     f0_array = fun(X)
     f0_array = np.array(f0_array) # making sure it is a numpy array
     assert(len(f0_array)==ndimOut)
@@ -49,6 +52,7 @@ def getJacobianMultiOut(fun,X,step,ndimOut=1):
         fp1_array = np.array(fun(Xnew))
         
         J_array[index,:] = (fp1_array -f0_array)/step[index]
+    print J_array
     return J_array,f0_array
 
 
@@ -382,6 +386,74 @@ class activeSubspace:
         self.important_var_index = imp_index 
 
 
+
+def addActiveSubspace_multiOuput(active1,active2,threshold=.99,nsubspace=None):
+    
+    ch1 = active1.ndim == active2.ndim
+    ch2 = (active1.AJA == active2.AJA).all()
+
+    assert ((ch1==ch2)==True)
+    '''
+    if len(resMulti[index])>2:
+            otherVals = resMulti[index][2]
+            otherList.append(otherVals)
+    '''
+
+    # adding classes   
+    activeOut = copy.copy(active1)
+    funDim = activeOut.funDim
+    activeOut.values = np.concatenate((active1.values,active2.values),axis=1)
+    activeOut.base = np.concatenate((active1.base,active2.base),axis=1)
+    A = activeOut.AJA
+
+    activeOut.outputs   
+    nSamples =  len(active1.outputs[0]) + len(active2.outputs[0])
+    activeOut.outputs = np.zeros((funDim,nSamples))
+    ndim = active1.ndim
+    activeOut.J = np.zeros((funDim,ndim,nSamples))
+    for index in range(activeOut.funDim):
+
+        activeOut.outputs[index,:] = np.concatenate((active1.outputs[index],active2.outputs[index]),axis=1)
+        activeOut.J[index,:,:] = np.concatenate((active1.J[index,:,:],active2.J[index,:,:]),axis=1)
+
+
+    
+    sumJ = np.zeros((funDim,ndim,ndim))
+    for indexDim in range(funDim):
+        for index in range(nSamples):
+            J = activeOut.J[indexDim,:,index,None]# resMulti[index][0]
+            sumJ[indexDim,:,:] = np.dot(J,J.T) + sumJ[indexDim,:,:]
+
+
+    activeOut.eigenvals = []#np.zeros((ndim,funDim))
+    activeOut.eigenvecs = []#np.zeros((funDim,ndim,ndim))
+    activeOut.Nsubspace = [0]*funDim
+    activeOut.U = []
+    activeOut.subspaceBase = []
+
+
+
+    for index in range(funDim):
+
+        sumJ[index,:,:] = np.dot(A,sumJ[index,:,:])#could change this to make matrix calc faster (elem*row) 
+        sumJ[index,:,:] = np.dot(sumJ[index,:,:],A)
+    
+        sumJ[index,:,:] = (1./np.float(nSamples))*sumJ[index,:,:]
+        eigenvals,eigenvecs = np.linalg.eigh(sumJ[index,:,:])
+        idx = eigenvals.argsort()[::-1]   # sorting from highest to lowest
+        eigenvals = eigenvals[idx]
+        eigenvecs = eigenvecs[:,idx]  
+        activeOut.eigenvals.append(eigenvals)# [:,index] = eigenvals
+        activeOut.eigenvecs.append(eigenvecs)# [index,:,:] = eigenvecs
+
+        if nsubspace==None: #let the code pick the number of eigenvalues
+            nsubspace = activeOut.selectSubspaces(eigenvals,threshold=threshold)
+
+        activeOut.Nsubspace[index] = nsubspace
+        activeOut.U.append(eigenvecs[:,0:nsubspace])
+        activeOut.subspaceBase.append(np.dot((activeOut.U[index]).T,activeOut.base))
+    return activeOut
+
 class activeSubspace_multiOutput:
     def __init__(self):
         self.eigenvals = []
@@ -415,13 +487,20 @@ class activeSubspace_multiOutput:
         sumJ = np.zeros((funDim,ndim,ndim))
         self.outputs = np.zeros((funDim,nSamples))-999999.
         self.J = np.zeros((funDim,ndim,nSamples))
+        otherList = []
         if funPrime==None:
             funPrime = lambda X:getJacobianMultiOut(fun,X,step,ndimOut=funDim)# getJacobian(fun,X,step)
         
         
         if multiPro==1:
             for index in range(nSamples):
-                J,funcOut = funPrime(self.values[:,index])
+                #J,funcOut = funPrime(self.values[:,index])
+                resMulti = funPrime(self.values[:,index])
+                J = resMulti[0]
+                funcOut = resMulti[1]
+                if len(resMulti)>2:
+                    otherVals = resMulti[2]
+                    otherList.append(otherVals)
                 for indexDim in range(funDim):
                     Jtemp = J[:,indexDim,None]                
                     self.J[indexDim,:,index] = Jtemp[:,0]
@@ -432,16 +511,21 @@ class activeSubspace_multiOutput:
             valsMulti = ((self.values).T).tolist()
             p = mp.Pool(multiPro)
             resMulti= p.map(funPrime,valsMulti)
+
             for index in range(nSamples):
                 J = resMulti[index][0]
                 funcOut = resMulti[index][1]
+                if len(resMulti[index])>2:
+                    otherVals = resMulti[index][2]
+                    otherList.append(otherVals)
+
                 for indexDim in range(funDim):
                     Jtemp = J[:,indexDim,None]                
                     self.J[indexDim,:,index] = Jtemp[:,0]
 
                     self.outputs[indexDim,index] = funcOut[indexDim]
                     sumJ[indexDim,:,:] = np.dot(Jtemp,Jtemp.T) + sumJ[indexDim,:,:]
-   
+        self.otherVals = otherList
         self.eigenvals = []#np.zeros((ndim,funDim))
         self.eigenvecs = []#np.zeros((funDim,ndim,ndim))
         self.Nsubspace = [0]*funDim
@@ -494,7 +578,7 @@ class activeSubspace_multiOutput:
                 print 'Error in updateSubspace. Cannot specify both nsubspace and threshold'
                 exit()
             for index in range(self.funDim):
-
+                eigenvecs = self.eigenvecs[index]
                 self.Nsubspace[index] = nsubspace
                 self.U.append(eigenvecs[:,0:nsubspace])
                 self.subspaceBase.append(np.dot((self.U[index]).T,self.base))
@@ -600,6 +684,81 @@ class activeSubspace_multiOutput:
 
     '''
 
+
+class ActiveSubspacesLinear:
+    def __init__(self,Xmatrix,Jmatrix,rangeVar,Amatrix,threshold = 0.99 ):
+        #Xmatrix is the subspace.base [-1,1]
+        Jsum = [0]*len(rangeVar)
+        AJA = [0]*len(rangeVar)
+        UList = [0]*len(rangeVar)
+        ndim , nSamples = np.shape(Jmatrix)   
+        Adiag = np.diag(Amatrix)  
+        subspaceBaseList=[]
+        for in0 in range(len(rangeVar)):   
+            for in1 in range(nSamples):
+                Jtemp = decomposeVariable(Jmatrix[:,in1],rangeVar,in0,flag_2d=True)
+                Jsum[in0] = np.dot(Jtemp,Jtemp.T) + Jsum[in0]
+            A = decomposeVariable(Adiag,rangeVar,in0)
+            A = np.diag(A)
+            AJA[in0] = np.dot(A,Jsum[in0])
+            AJA[in0] = np.dot(AJA[in0],A)
+            eigenvals,eigenvecs = np.linalg.eigh(AJA[in0])
+            idx = eigenvals.argsort()[::-1]   # sorting from highest to lowest
+            eigenvals = eigenvals[idx]
+            eigenvecs = eigenvecs[:,idx]  
+
+            Nsubspace = selectSubspaces(eigenvals,threshold = threshold)
+            print eigenvals
+            UList[in0] = eigenvecs[:,0:Nsubspace]
+            subspaceBaseList.append(np.dot((UList[in0]).T,decomposeVariableMatrix(Xmatrix,rangeVar,in0)))
+        self.UList = UList
+        self.subspaceBaseList = subspaceBaseList
+
+
+
+    def updateSubspace(self,nsubspace=None,threshold=None):
+        if nsubspace==None:
+            if threshold==None:
+                print 'Error in updateSubspace. No specified nsubspace or threshold'
+                exit()
+            self.selectSubspaces(threshold=threshold)
+        else :
+            if threshold!=None:
+                print 'Error in updateSubspace. Cannot specify both nsubspace and threshold'
+                exit()
+            self.Nsubspace = nsubspace
+
+        self.U = self.eigenvecs[:,0:self.Nsubspace]
+        self.subspaceBase = np.dot((self.U).T,self.base)
+        self.importantVariables()
+    
+def selectSubspaces(eigenvals,threshold=None):
+    #eigrnvalues must be in decreasing order
+    totalSum = np.sum(eigenvals)
+    currSum = 0.0
+    
+    for index in range(len(eigenvals)):
+        currSum = currSum + eigenvals[index]
+        #print 'temp',currSum/totalSum,index
+        
+        if (currSum/totalSum)>=threshold:
+            #print 'Final',currSum/totalSum,index
+            break
+    return index + 1
+
+
+
+
+def decomposeVariable(J_X,rangeVar,index,flag_2d = False):
+    #J_X input vector
+    # rangeVar is a list of indexes that contain the required grouping for inputs
+    if flag_2d==False:
+        return J_X[rangeVar[index]]
+    else:
+        return J_X[rangeVar[index],None]
+
+def decomposeVariableMatrix(J_X,rangeVar,index):
+    return J_X[rangeVar[index],:]
 
 
 

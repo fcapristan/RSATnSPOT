@@ -131,13 +131,13 @@ def getVals5Groups(c):
     # Wood Roof, Wood 1st, Wood 2nd,Tile 1st, Tile 2nd -> assumes group 3
     #  Steel Roof, Steel 1st, Steel 2nd, Concrete, Concrete 1st, Concrete 2nd -> assumes group 4
     # composite -> group 2
-    # light metal -> group 1
+    # light metal , cars-> group 1
     # group 5...people in the open
-    c1 = c[10] #light metal
+    c1 = c[10] + c[14]#light metal and cars
     c2 = c[9] #composite
     c3 = c[0] + c[1] + c[2] + c[11] + c[12] + c[13] #wood
     c4 = c[3] + c[4] + c[5] + c[6] + c[7] +c[8] #steel and concrete
-    c5 = c[14]+c[15] #people in cars and in the open considered to be outside
+    c5 = c[15] #in the open considered to be outside
     #print 'c1',c1
     return np.array([c1,c2,c3,c4,c5])
 #fileName = 'shelterTables.txt'
@@ -161,7 +161,8 @@ class shelter:
         #print 'Value for sheltering fraction',c_sum,'This value will be used to normalize the sheltering fraction'
         c = c/c_sum
         c5array = getVals5Groups(c)
-        if np.sum(c5array)!=1.0:
+
+        if (np.sum(c5array) - 1.0)**2 >.000001:
             print 'Error: sheltering fraction does not add up to 1.'
             print 'Check sheltering.py'
             exit
