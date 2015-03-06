@@ -262,10 +262,15 @@ class activeSubspace:
         self.eigenvecs = []
         self.Nsubspace = []
         self.outputs = []
-    def getSubspace(self,fun=None,funPrime=None,distributionClass=None,nSamples=None,nsubspace=None,step=None,controlIndex=None,multiPro=1,threshold=.95):
+    def getSubspace(self,fun=None,funPrime=None,distributionClass=None,nSamples=None,nsubspace=None,step=None,controlIndex=None,multiPro=1,threshold=.95,LHS=False):
         ndim = len(distributionClass.name)
         self.ndim = ndim
-        self.base = np.random.uniform(size=[ndim,nSamples])
+        
+        if LHS ==True:
+            self.base = sampling.getLHSuniform(ndim,nSamples)
+        elif LHS==False:
+            self.base = np.random.uniform(size=[ndim,nSamples])
+        
         self.values = np.zeros((ndim,nSamples))
         self.controlIndex = controlIndex
         lowLim = distributionClass.minVal
@@ -460,10 +465,14 @@ class activeSubspace_multiOutput:
         self.eigenvecs = []
         self.Nsubspace = []
         self.outputs = []
-    def getSubspace(self,fun=None,funPrime=None,funDim=1,distributionClass=None,nSamples=None,nsubspace=None,step=None,controlIndex=None,multiPro=1,threshold=.95):
+    def getSubspace(self,fun=None,funPrime=None,funDim=1,distributionClass=None,nSamples=None,nsubspace=None,step=None,controlIndex=None,multiPro=1,threshold=.95,LHS=False):
         ndim = len(distributionClass.name)
         self.ndim = ndim
-        self.base = np.random.uniform(size=[ndim,nSamples])
+        
+        if LHS ==True:
+            self.base = sampling.getLHSuniform(ndim,nSamples)
+        elif LHS==False:
+            self.base = np.random.uniform(size=[ndim,nSamples])
         self.values = np.zeros((ndim,nSamples))
         self.controlIndex = controlIndex
         self.funDim = funDim
