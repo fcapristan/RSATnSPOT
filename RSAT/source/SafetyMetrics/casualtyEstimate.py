@@ -288,10 +288,18 @@ def calculateEcBlast(lon,lat,populationClass,boundsOption,rad_Exp_Blast,angleDeg
 
     lonMesh,latMesh = np.meshgrid(lonVec,latVec)
 
-    popdensity,xMatLoc,yMatLoc = SMF.agsgetdensity(populationClass.keyPop,populationClass.keyArea,
+
+    try:
+
+        popdensity,xMatLoc,yMatLoc = SMF.agsgetdensity(populationClass.keyPop,populationClass.keyArea,
                                                                populationClass.xllcorner,populationClass.yllcorner,
                                                                populationClass.cellsize,lonMesh,latMesh,
                                                                populationClass.xMax,populationClass.yMax,boundsOption)  
+    except:
+        popdensity = SMF.agsgetvals(populationClass.keyDen,populationClass.xllcorner,populationClass.yllcorner,
+                                   populationClass.cellsize,lonMesh,latMesh,populationClass.xMax,
+                                   populationClass.yMax,boundsOption)
+
     if polygon!=None:
         xpol = polygon[0]
         ypol = polygon[1]
@@ -313,7 +321,7 @@ def calculateEcBlast(lon,lat,populationClass,boundsOption,rad_Exp_Blast,angleDeg
     #print np.sum(Ac)*m2_to_km2
     #currPopulation = np.asarray(deepcopy(populationClass.keyPop),order='F') # making sure it is Fortran ordered
     #print 'P1',populationClass.keyPop[xMatLoc,yMatLoc]
-    row,col = np.shape(xMatLoc)
+    #row,col = np.shape(xMatLoc)
 
     # population was being updated every single time
     #for i in range(row):

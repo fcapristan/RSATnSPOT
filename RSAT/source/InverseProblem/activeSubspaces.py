@@ -5,6 +5,8 @@ import numpy as np
 import time
 import os
 import copy
+import sampling
+
 
 def normalizeX(distribution,X):
     ndim,nSamples = np.shape(X)
@@ -465,7 +467,7 @@ class activeSubspace_multiOutput:
         self.eigenvecs = []
         self.Nsubspace = []
         self.outputs = []
-    def getSubspace(self,fun=None,funPrime=None,funDim=1,distributionClass=None,nSamples=None,nsubspace=None,step=None,controlIndex=None,multiPro=1,threshold=.95,LHS=False):
+    def getSubspace(self,fun=None,funPrime=None,funDim=1,distributionClass=None,nSamples=None,nsubspace=None,step=None,controlIndex=None,multiPro=1,threshold=.95,LHS=True):
         ndim = len(distributionClass.name)
         self.ndim = ndim
         
@@ -597,8 +599,14 @@ class activeSubspace_multiOutput:
         #eigenvals = self.eigenvals
         #eigrnvalues must be in decreasing order
         totalSum = np.sum(eigenvals)
+        Nsubspace = 0
+        if totalSum<=0.:
+            print 'Warning in Active Subspace Computation'
+            print 'Here the eigenvalues'
+	    print eigenvals
+            print 'Eigenvalues sum to zero or negative'
+            return 1
         currSum = 0.0
-        
         for index in range(len(eigenvals)):
             currSum = currSum + eigenvals[index]
             #print 'temp',currSum/totalSum,index
