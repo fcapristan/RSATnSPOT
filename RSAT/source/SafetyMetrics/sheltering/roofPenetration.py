@@ -405,8 +405,14 @@ class shelteringClass:
         gpC.getModelWood()
         gpD.getModelConcreteSteel()       
         self.groupA = gpA
-        self.groupB = gpB
-        self.groupC = gpC
+        ####################
+        #changing these lines becuase they are not in the right order in FAA handbook
+        #self.groupB = gpB
+        #self.groupC = gpC
+        self.groupB = gpC
+        self.groupC = gpB
+        #####################
+
         self.groupD = gpD
     
     def sampleAllGroups(self,massIN,ArefIN,CD):

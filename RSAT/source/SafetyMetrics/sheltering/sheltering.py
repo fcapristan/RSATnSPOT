@@ -134,8 +134,8 @@ def getVals5Groups(c):
     # light metal , cars-> group 1
     # group 5...people in the open
     c1 = c[10] + c[14]#light metal and cars
-    c2 = c[9] #composite
-    c3 = c[0] + c[1] + c[2] + c[11] + c[12] + c[13] #wood
+    c3 = c[9] #composite...changed c2 for c3 and viceversa because wrong order was used before in FAA handbook
+    c2 = c[0] + c[1] + c[2] + c[11] + c[12] + c[13] #wood
     c4 = c[3] + c[4] + c[5] + c[6] + c[7] +c[8] #steel and concrete
     c5 = c[15] #in the open considered to be outside
     #print 'c1',c1

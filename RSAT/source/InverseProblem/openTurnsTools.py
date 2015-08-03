@@ -38,10 +38,20 @@ def divideInputs(inList,importantIndex,subsetIndex=False):
     return impDist,impVectX,otherDist,otherVectX
 
 def wrapVariables(Ximp,Xother,importantIndex):
-    X = np.zeros((len(importantIndex)))
+    X = np.empty((len(importantIndex)))
     X[importantIndex] = Ximp
     X[~importantIndex] = Xother
     return X
+
+class wrapVariablesClass:
+    def __init__(self,ndim):
+        self.ndim = ndim
+        self.X = np.zeros((ndim))
+    def wrapX(self,Ximp,Xother,importantIndex):
+        self.X[importantIndex] = Ximp
+        self.X[~importantIndex] = Xother
+        return self.X
+
 
 def LHSExperimentWithIndexForSobol(inList,importantIndex,seed1,seed2,seed3,nCases):
 
@@ -65,7 +75,7 @@ def LHSExperimentWithIndexForSobol(inList,importantIndex,seed1,seed2,seed3,nCase
 def getXfromSubset(Ximp,VarOther,importantIndex):
     # index 0 of Ximp is just the index for the subset vars
     Xindex = int(Ximp[0])
-    assert (Xindex==Ximp[0]) #making sure Ximp is an integer, it is simply expressed as a double
+    #assert (Xindex==Ximp[0]) #making sure Ximp is an integer, it is simply expressed as a double
     Ximp = np.array(Ximp)
     Ximp = Ximp[1:len(Ximp)] # keeping the actual variables
     Xother = VarOther[Xindex,:]
@@ -74,25 +84,30 @@ def getXfromSubset(Ximp,VarOther,importantIndex):
 
 def getValOutfromSubset(Ximp,VarOther,importantIndex,fun):
     X = getXfromSubset(Ximp,VarOther,importantIndex)
+    
     valOut = fun(X)
     return valOut
 # wrapper function for running samples in parallel
+
 class myfunction(OpenTURNSPythonFunction):
     def __init__(self,multiPro=12,dim=None,fun=None):
         OpenTURNSPythonFunction.__init__(self, dim, 1)
         self.Nproc = multiPro
         self.myfun = fun
     def _exec(self,in_point):
+        print 'nop'
+        exit()
         return (self._exec_sample([in_point]))
 
     def _exec_sample(self, in_sample):
-
-
-        
+       
         Xlist=[[s for s in p] for p in in_sample]
+  
         p = mp.Pool(self.Nproc)
         myfun = self.myfun 
         samp = p.map(myfun,Xlist)
+   
+     
         return samp
         
         '''

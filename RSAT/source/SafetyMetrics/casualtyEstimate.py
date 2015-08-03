@@ -522,7 +522,7 @@ def calculateEcMatrixShelteringWeighted(lonlat,populationClass,weightArray,
     if np.sum(popMatrix)>0.0:
         
 
-        
+        #print 'A0',len(ArefList)    
         # now divide into ballistic coefficient groups
         nAref,nmass,nlonlat,nweightArray =groupBallisticCoeff(ArefList=ArefList,massList=massList,lonlat=lonlat,weight=weightArray,CDref=CDref)
         nSamplesTotal  = 0.0
@@ -537,7 +537,8 @@ def calculateEcMatrixShelteringWeighted(lonlat,populationClass,weightArray,
             if nSamplesloc<=10:
                 print 'Error: Adjust debris catalog. Current samples for this subgroup (rearranged by ballistic coeff) <10 samples '
                 print 'Try subdiviging this debris group or add more samples'
-                print 'Check debris catalog',debrisClass.name
+                print 'Check debris catalog',debrisClass.name,nSamplesloc
+                print 'Weight Array',weightArrayLocal
                 exit(2)
 
             ZZpdfPframetemp = getWeightedPDFfromSetup(lonlatPframe,xMeshP,yMeshP,weightArrayLocal)
@@ -853,7 +854,7 @@ def groupBallisticCoeff(ArefList=None,massList=None,lonlat=None,weight=None,CDre
     lonlatOut = []
     weightOut = []
     ballistic = g*(np.array(massList))/(CDref*np.array(ArefList))
-    
+    #print 'AA',len(ArefList) 
     indexOutBounds = ballistic<validBeta
     if np.sum(indexOutBounds)>0:#handling cases that are below the lower bound threshold
         arefOut.append(ArefList[indexOutBounds])

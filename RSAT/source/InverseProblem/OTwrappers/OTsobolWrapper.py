@@ -65,14 +65,18 @@ def wrapSobol(wInList=None,OTmodelListIn=None,OTinputList=None,seedList1=None,se
 
 def fTotal(X,indexVariables,functionList,weightList):
     X = np.array(X)
-
     valOut = 0.0
+    #print X
+    #print indexVariable
     for index in range(len(weightList)):
+        #print 'X',X
+        #print 'ii',indexVariables[index]
         Xin = X[indexVariables[index]]
-
+        #print 'Xin',Xin
+        #print 'F',len(functionList)
         valC = functionList[index](Xin)
         valOut = weightList[index]*valC + valOut
-
+        #print valOut
     return valOut
 
 
@@ -80,6 +84,7 @@ def fTotal(X,indexVariables,functionList,weightList):
 def fTotal(X,indexArray,funList,weightArray):
     Xvars = getXsingle(X,indexArray)
     valOut = 0.0
+    
     for index in range(len(Xvars)):
         cval = funList[index](Xvars[index])
 
@@ -101,22 +106,29 @@ def getXsingle(X,indexList):
 
 
 def sobolMod(weightList = None, functionList = None,nCases=None,blocksize=None,sharedIndex = None,ImportantBoolIndex = None,indexVariable = None,seedList = None,varTotal=-9999,multiPro=1):
-
-    MainIndexOut = np.zeros(len(ImportantBoolIndex)) -9999
-    TotalIndexOut = np.zeros(len(ImportantBoolIndex)) -9999
+    refSobol = -99999
+    MainIndexOut = np.zeros(len(ImportantBoolIndex)) -refSobol
+    TotalIndexOut = np.zeros(len(ImportantBoolIndex)) -refSobol
     if blocksize==None:
         blocksize = nCases
     # first let's do the shared Input Variables
     [seed1,seed2,seed3] = seedList
-    sharedIndex = np.array(sharedIndex)
+     
+    if len(sharedIndex) ==0:
+        checkBool= -77
+    else:
 
-    sharedBoolIndex = ImportantBoolIndex[sharedIndex]
+        sharedIndex = np.array(sharedIndex)
+   
+        sharedBoolIndex = ImportantBoolIndex[sharedIndex]
     
-    sharedIndexImp = sharedIndex[sharedBoolIndex]
+        sharedIndexImp = sharedIndex[sharedBoolIndex]
 
-    checkBool = np.sum(sharedBoolIndex)
-    varTotal = -999
-    time0 = time.time()
+        checkBool = np.sum(sharedBoolIndex)
+        #varTotal = -999
+        time0 = time.time()
+        #print 'checlBool',checkBool
+        #exit()
     if checkBool >=1: # do sobol indices over shared function
         sharedBoolIndex = ImportantBoolIndex
         sharedBoolSobol = np.array([False]*len(ImportantBoolIndex))
@@ -134,7 +146,7 @@ def sobolMod(weightList = None, functionList = None,nCases=None,blocksize=None,s
 
         sensAnalysis.setBlockSize(nCases)
         print 'starting2'
-
+        print len(inList),len(indexVariable),len(functionList),len(weightList)
         firstOrderIndicesShared = sensAnalysis.getFirstOrderIndices()
         totalOrderIndicesShared = sensAnalysis.getTotalOrderIndices()
         print 'done'
@@ -149,50 +161,81 @@ def sobolMod(weightList = None, functionList = None,nCases=None,blocksize=None,s
                 counter = counter + 1
     # Now doing the rest of the sobol indices
     varList = []
-
+    tempVarTotal = 0.0
     for index in range(len(functionList)):
+        #tempVarTotal = 0.0
         currentIndexBool = ImportantBoolIndex[indexVariable[index]]
         currentIndexBool[sharedIndex] = False
         checkBoolSum = np.sum(currentIndexBool)
-    
+        simpleFun = False 
         if checkBoolSum>=1: # important index in given 
             inList = [Uniform(0.0,1.0)]*len(currentIndexBool)
+            if np.sum(currentIndexBool)==len(currentIndexBool) and (checkBool==-77) :#nothing to bunch together
+                simpleFun = True
+                flocal = functionList[index]
+                sensAnalysis = sobolFunc(myfunction=flocal,nCases=nCases,dim=len(currentIndexBool),seedList=[seed1+index,seed2+index],multiPro=multiPro)
+            
+            else:
+                inp1,inp2,inpOther = OTtools.LHSExperimentWithIndexForSobol(inList,currentIndexBool,seed1+index,seed2+index,seed3+index,nCases)
+                flocal = functionList[index]
+                funcXimp = lambda Ximp:OTtools.getValOutfromSubset(Ximp,inpOther,currentIndexBool,flocal)
 
-            inp1,inp2,inpOther = OTtools.LHSExperimentWithIndexForSobol(inList,currentIndexBool,seed1+index,seed2+index,seed3+index,nCases)
-            flocal = functionList[index]
-            funcXimp = lambda Ximp:OTtools.getValOutfromSubset(Ximp,inpOther,currentIndexBool,flocal)
-
-            newSamp,newDim = np.shape(inp1)
-            OTfunXimp = OTtools.myfunction(multiPro=multiPro,dim=newDim,fun=funcXimp)
-            model = NumericalMathFunction(OTfunXimp)
-            sensAnalysis = mySensitivityAnalysis(inp1,inp2,model)
+                newSamp,newDim = np.shape(inp1)
+                OTfunXimp = OTtools.myfunction(multiPro=multiPro,dim=newDim,fun=funcXimp)
+                model = NumericalMathFunction(OTfunXimp)
+                sensAnalysis = mySensitivityAnalysis(inp1,inp2,model)
 
             sensAnalysis.setBlockSize(nCases)
             firstOrderIndices = sensAnalysis.getFirstOrderIndices()
             totalOrderIndices = sensAnalysis.getTotalOrderIndices()
+            print 'TempSobolMain',firstOrderIndices
+            print 'TempSobolTotal',totalOrderIndices
             out1 = sensAnalysis.getOutVals1()
             std1 = out1.computeStandardDeviation()[0,0]
             var = std1**2.0
+            tempVarTotal = tempVarTotal + var
+            print 'Tempvar',var
             sobolNewFirstList = []
             sobolNewTotalList = []
-            for index1 in range(len(firstOrderIndices)-1):
-                sobolFirst = firstOrderIndices[index1+1]
-                sobolTotal = totalOrderIndices[index1+1]
-                sobolNewFirst = (weightList[index]**2.0 * var*sobolFirst)/varTotal
-                sobolNewTotal = (weightList[index]**2.0 * var*sobolTotal)/varTotal
-                sobolNewFirstList.append(sobolNewFirst)
-                sobolNewTotalList.append(sobolNewTotal)
+             
+            if simpleFun==False:
+                for index1 in range(len(firstOrderIndices)-1):
+                    sobolFirst = firstOrderIndices[index1+1]
+                    sobolTotal = totalOrderIndices[index1+1]
+                    sobolNewFirst = (weightList[index]**2.0 * var*sobolFirst)#/varTotal
+                    sobolNewTotal = (weightList[index]**2.0 * var*sobolTotal)#/varTotal
+                    sobolNewFirstList.append(sobolNewFirst)
+                    sobolNewTotalList.append(sobolNewTotal)
+            else:
+	       for index1 in range(len(firstOrderIndices)):    
+                    sobolFirst = firstOrderIndices[index1]
+                    sobolTotal = totalOrderIndices[index1]
+                    sobolNewFirst = (weightList[index]**2.0 * var*sobolFirst)#/varTotal
+                    sobolNewTotal = (weightList[index]**2.0 * var*sobolTotal)#/varTotal
+                    sobolNewFirstList.append(sobolNewFirst)
+                    sobolNewTotalList.append(sobolNewTotal)
+
             counter = 0
             for index2 in range(len(indexVariable[index])):
                 if currentIndexBool[index2]==True:
                     MainIndexOut[indexVariable[index][index2]] = sobolNewFirstList[counter]
                     TotalIndexOut[indexVariable[index][index2]] = sobolNewTotalList[counter]
                     counter = counter + 1
-    time2 = time.time()
-    print 'time2',time2- time0
+    print 'vv', varTotal
+    #time2 = time.time()
+    #print 'time2',time2- time0
+
+    if varTotal <0:
+        varTotal = tempVarTotal
+        print 'varTotal',varTotal
+    for index in range(len(MainIndexOut)):
+        if MainIndexOut[index]!=refSobol:
+           MainIndexOut[index] = MainIndexOut[index]/varTotal
+           TotalIndexOut[index] = TotalIndexOut[index]/varTotal
+
     print 'M',MainIndexOut
     print 'T',TotalIndexOut
-
+    return MainIndexOut,TotalIndexOut
 
 def funFix(myfun,X,indexArray):
     X = np.array(X)
@@ -217,3 +260,37 @@ def setInputRandomVector(inList):
     myDistribution = ComposedDistribution(myCollection)
     VectX = RandomVector(Distribution(myDistribution))
     return myDistribution,VectX
+
+
+def sobolFunc(myfunction=None,nCases=None,dim=None,seedList=None,multiPro=1):
+  
+
+    inList = [Uniform(0.0,1.0)]*dim # making a list of uniform distributions of dimension "dim"
+
+    myDistribution,VectX = OTtools.setInputRandomVector(inList)
+
+
+    #f = lambda X : EcCalc(X,tfail)
+    
+    #model = PythonFunction(dim,1,f)
+  
+    func = OTtools.myfunction(dim=dim,fun=myfunction,multiPro=multiPro)
+    model = NumericalMathFunction(func)
+
+
+    RandomGenerator.SetSeed(seedList[0])
+    myRandomExp1 = LHSExperiment(myDistribution,nCases)
+    inp1 = myRandomExp1.generate()
+
+    RandomGenerator.SetSeed(seedList[1])
+    myRandomExp2 = LHSExperiment(myDistribution,nCases)
+    inp2 = myRandomExp2.generate()
+
+    #myRandomExp3 = LHSExperiment(myDistribution,nCases)
+    #inp3 = myRandomExp3.generate()
+    
+    
+    sensAnalysis = mySensitivityAnalysis(inp1,inp2,model)
+
+    #sensAnalysis.setBlockSize(nCases)
+    return sensAnalysis
